@@ -1,3 +1,4 @@
+import 'package:app/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app/providers/question_provider.dart';
@@ -14,24 +15,58 @@ class _SettingsViewState extends State<SettingsView> {
   String _selectedProvider = 'OpenAI';
   final List<String> _providers = ['OpenAI', 'Anthropic', 'Gemini'];
 
+  // Selected options for multi-selects
+  List<String> _selectedMoodTone = ['Funny/Playful'];
+  List<String> _selectedGoals = ['Getting to know each other better'];
+  List<String> _selectedCategories = ['Past experiences'];
+
   @override
   Widget build(BuildContext context) {
     final questionProvider = Provider.of<QuestionProvider>(context);
+    final profileProvider = Provider.of<ProfileProvider>(context);
 
-    // Initialize sliders with values from provider
-    double intimacyLevel = questionProvider.intimacyLevel.toDouble();
-    double depthLevel = questionProvider.depthLevel.toDouble();
-    double purposeLevel = questionProvider.purposeLevel.toDouble();
+    // Access the active profile via the profile provider
+    final activeProfile = profileProvider.activeProfile;
+    if (activeProfile == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: const Center(
+          child: Text('No active profile found. Please create a profile first.'),
+        ),
+      );
+    }
+
+    // Initialize values from provider
     _selectedProvider = questionProvider.currentProvider;
+    _selectedMoodTone = List.from(questionProvider.moodTone);
+    _selectedGoals = List.from(questionProvider.goalOfInteraction);
+    _selectedCategories = List.from(questionProvider.thematicCategory);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: Text('Settings for ${activeProfile.name}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Manage Profiles',
+            onPressed: () {
+              Navigator.pushNamed(context, '/profiles');
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Question Parameters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('Question Generation Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
 
             // LLM Provider selection
@@ -63,53 +98,191 @@ class _SettingsViewState extends State<SettingsView> {
             const Divider(),
             const SizedBox(height: 12),
 
-            // Intimacy Level Slider
-            _buildSettingSection(
-              title: 'Intimacy Level',
-              description: 'Controls how personal or intimate the questions will be',
-              value: intimacyLevel,
+            // Depth of Relationship
+            const Text('Depth of Relationship', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('How well do the people know each other?', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: questionProvider.depthOfRelationship,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              items:
+                  questionProvider.depthOptions.map((option) {
+                    return DropdownMenuItem(value: option, child: Text(option));
+                  }).toList(),
               onChanged: (value) {
-                setState(() {
-                  questionProvider.updateSettings(intimacy: value.toInt());
-                });
+                if (value != null) {
+                  questionProvider.updateSettings(depthOfRelationship: value);
+                }
               },
-              startLabel: 'Innocent',
-              midLabel: 'Sensual',
-              endLabel: 'Sexual',
             ),
 
-            const Divider(height: 32),
+            const SizedBox(height: 24),
 
-            // Depth Level Slider
-            _buildSettingSection(
-              title: 'Depth',
-              description: 'Controls how deep or philosophical the questions will be',
-              value: depthLevel,
-              onChanged: (value) {
-                setState(() {
-                  questionProvider.updateSettings(depth: value.toInt());
-                });
-              },
-              startLabel: 'Surface-level',
-              midLabel: 'Intermediate',
-              endLabel: 'Deep',
+            // Mood/Tone (multi-select)
+            const Text('Mood/Tone', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'Select one or more desired tones for the questions',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  questionProvider.moodOptions.map((option) {
+                    final isSelected = _selectedMoodTone.contains(option);
+                    return FilterChip(
+                      label: Text(option),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedMoodTone.add(option);
+                          } else {
+                            _selectedMoodTone.remove(option);
+                          }
+                          // Don't allow empty selection
+                          if (_selectedMoodTone.isEmpty) {
+                            _selectedMoodTone.add(option);
+                          }
+                          questionProvider.updateSettings(moodTone: _selectedMoodTone);
+                        });
+                      },
+                    );
+                  }).toList(),
             ),
 
-            const Divider(height: 32),
+            const SizedBox(height: 24),
 
-            // Purpose Slider
-            _buildSettingSection(
-              title: 'Purpose',
-              description: 'Controls the intended purpose of the questions',
-              value: purposeLevel,
+            // Context
+            const Text('Context', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'In what setting will this conversation take place?',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: questionProvider.context,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              items:
+                  questionProvider.contextOptions.map((option) {
+                    return DropdownMenuItem(value: option, child: Text(option));
+                  }).toList(),
               onChanged: (value) {
-                setState(() {
-                  questionProvider.updateSettings(purpose: value.toInt());
-                });
+                if (value != null) {
+                  questionProvider.updateSettings(context: value);
+                }
               },
-              startLabel: 'Fun',
-              midLabel: 'Bonding/Exploration',
-              endLabel: 'Conflict Resolution',
+            ),
+
+            const SizedBox(height: 24),
+
+            // Comfort Level
+            const Text('Comfort Level', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'How challenging or personal should the questions be?',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: questionProvider.comfortLevel,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              items:
+                  questionProvider.comfortOptions.map((option) {
+                    return DropdownMenuItem(value: option, child: Text(option));
+                  }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  questionProvider.updateSettings(comfortLevel: value);
+                }
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // Goal of Interaction (multi-select)
+            const Text('Goal of Interaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'What should these questions help accomplish?',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  questionProvider.goalOptions.map((option) {
+                    final isSelected = _selectedGoals.contains(option);
+                    return FilterChip(
+                      label: Text(option),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedGoals.add(option);
+                          } else {
+                            _selectedGoals.remove(option);
+                          }
+                          // Don't allow empty selection
+                          if (_selectedGoals.isEmpty) {
+                            _selectedGoals.add(option);
+                          }
+                          questionProvider.updateSettings(goalOfInteraction: _selectedGoals);
+                        });
+                      },
+                    );
+                  }).toList(),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Thematic Category (multi-select)
+            const Text('Thematic Category', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'What kinds of topics should the questions cover?',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  questionProvider.categoryOptions.map((option) {
+                    final isSelected = _selectedCategories.contains(option);
+                    return FilterChip(
+                      label: Text(option),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedCategories.add(option);
+                          } else {
+                            _selectedCategories.remove(option);
+                          }
+                          // Don't allow empty selection
+                          if (_selectedCategories.isEmpty) {
+                            _selectedCategories.add(option);
+                          }
+                          questionProvider.updateSettings(thematicCategory: _selectedCategories);
+                        });
+                      },
+                    );
+                  }).toList(),
             ),
 
             const SizedBox(height: 40),
@@ -125,73 +298,6 @@ class _SettingsViewState extends State<SettingsView> {
           ],
         ),
       ),
-    );
-  }
-
-  // Helper method to build a consistent setting section with slider
-  Widget _buildSettingSection({
-    required String title,
-    required String description,
-    required double value,
-    required Function(double) onChanged,
-    required String startLabel,
-    required String midLabel,
-    required String endLabel,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(description, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-        const SizedBox(height: 16),
-
-        // Simple slider
-        Slider(value: value, min: 1, max: 10, divisions: 9, label: value.round().toString(), onChanged: onChanged),
-
-        // Slider labels positioned at left, exact middle, and right
-        Stack(
-          children: [
-            // Container for setting the height
-            Container(height: 30, width: double.infinity),
-            // Left label with value
-            Positioned(
-              left: 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text("1", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 11)),
-                  Text(startLabel, style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-                ],
-              ),
-            ),
-            // Middle label with value
-            Positioned(
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Column(
-                  children: [
-                    Text("5", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 11)),
-                    Text(midLabel, style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-                  ],
-                ),
-              ),
-            ),
-            // Right label with value
-            Positioned(
-              right: 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text("10", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 11)),
-                  Text(endLabel, style: TextStyle(color: Colors.grey[700], fontSize: 11)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 

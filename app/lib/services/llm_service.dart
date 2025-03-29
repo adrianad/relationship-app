@@ -2,6 +2,20 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+/// Helper function to normalize text encoding issues
+String normalizeText(String text) {
+  // Replace common problematic characters
+  return text
+      .replaceAll(''', "'")
+    .replaceAll(''', "'")
+      .replaceAll('"', '"')
+      .replaceAll('"', '"')
+      .replaceAll('–', '-')
+      .replaceAll('—', '-')
+      .replaceAll('…', '...')
+      .replaceAll('\u00A0', ' '); // Replace non-breaking space with regular space
+}
+
 /// Abstract LLM Provider class to enable easy provider swapping
 abstract class LLMProvider {
   /// Makes an API request to generate text
@@ -33,7 +47,7 @@ class OpenAIProvider implements LLMProvider {
     try {
       final response = await http.post(
         Uri.parse(_endpoint),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
+        headers: {'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer $_apiKey'},
         body: jsonEncode({
           'model': _model,
           'messages': [
@@ -45,8 +59,10 @@ class OpenAIProvider implements LLMProvider {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'].trim();
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['choices'][0]['message']['content'].trim();
+        // Normalize apostrophes and quotes to ensure they display correctly
+        return normalizeText(content);
       } else {
         throw Exception('API Error: ${response.statusCode} - ${response.body}');
       }
@@ -81,7 +97,11 @@ class AnthropicProvider implements LLMProvider {
     try {
       final response = await http.post(
         Uri.parse(_endpoint),
-        headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01'},
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'x-api-key': _apiKey,
+          'anthropic-version': '2023-06-01',
+        },
         body: jsonEncode({
           'model': _model,
           'messages': [
@@ -93,8 +113,10 @@ class AnthropicProvider implements LLMProvider {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['content'][0]['text'].trim();
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['content'][0]['text'].trim();
+        // Normalize apostrophes and quotes to ensure they display correctly
+        return normalizeText(content);
       } else {
         throw Exception('API Error: ${response.statusCode} - ${response.body}');
       }
@@ -132,7 +154,7 @@ class GeminiProvider implements LLMProvider {
 
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: jsonEncode({
           'contents': [
             {
@@ -146,8 +168,10 @@ class GeminiProvider implements LLMProvider {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['candidates'][0]['content']['parts'][0]['text'].trim();
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['candidates'][0]['content']['parts'][0]['text'].trim();
+        // Normalize apostrophes and quotes to ensure they display correctly
+        return normalizeText(content);
       } else {
         throw Exception('API Error: ${response.statusCode} - ${response.body}');
       }
@@ -188,21 +212,35 @@ class LLMService {
 
   /// Generate a relationship question using the configured provider
   Future<String> generateRelationshipQuestion({
-    int intimacyLevel = 5,
-    int depthLevel = 5,
-    int purposeLevel = 5,
+    // New parameters matching new prompt format
+    String depthOfRelationship = 'Friends',
+    String moodTone = 'Funny/Playful',
+    String context = 'Casual hangout',
+    String comfortLevel = 'Moderate',
+    String goalOfInteraction = 'Getting to know each other better',
+    String thematicCategory = 'Past experiences',
     String questionHistory = '',
   }) async {
-    // Construct the prompt with explicit scale descriptions and question history
+    // Construct the prompt with new template
     final prompt = '''
-    Create a new relationship question based on these parameters (scale from 1–10):
+    Prompt Template for Generating Personalized Interaction Questions:
 
-    - Intimacy Level: $intimacyLevel [1 = Innocent, 5 = Sensual, 10 = Sexual] 
-    - Depth: $depthLevel [1 = Surface-level, 5 = Intermediate, 10 = Deep] 
-    - Purpose: $purposeLevel [1 = Fun, 5 = Bonding/Exploration, 10 = Conflict Resolution]
+    Create a thoughtful, engaging question optimized for a conversation between two people based on the following variables:
+
+    Depth of Relationship: $depthOfRelationship
+
+    Mood/Tone: $moodTone
+
+    Context: $context
+
+    Comfort Level: $comfortLevel
+
+    Goal of Interaction: $goalOfInteraction
+
+    Thematic Category: $thematicCategory
     $questionHistory
 
-    Use the numeric settings and historical feedback provided to create an optimally tailored, non-repetitive question.
+    Based on these inputs, generate a unique and engaging question tailored to the described scenario.
     Return only the question with no additional text, formatting, or preamble.
     ''';
 
