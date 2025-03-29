@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:app/providers/question_provider.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -8,13 +10,20 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
-  // Slider values with default settings
-  double _intimacyLevel = 5.0;
-  double _depthLevel = 5.0;
-  double _purposeLevel = 5.0;
+  // Selected LLM provider
+  String _selectedProvider = 'OpenAI';
+  final List<String> _providers = ['OpenAI', 'Anthropic', 'Gemini'];
 
   @override
   Widget build(BuildContext context) {
+    final questionProvider = Provider.of<QuestionProvider>(context);
+
+    // Initialize sliders with values from provider
+    double intimacyLevel = questionProvider.intimacyLevel.toDouble();
+    double depthLevel = questionProvider.depthLevel.toDouble();
+    double purposeLevel = questionProvider.purposeLevel.toDouble();
+    _selectedProvider = questionProvider.currentProvider;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: SingleChildScrollView(
@@ -25,18 +34,47 @@ class _SettingsViewState extends State<SettingsView> {
             const Text('Question Parameters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
 
+            // LLM Provider selection
+            const Text('LLM Provider', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'Select which AI provider to use for generating questions',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _selectedProvider,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              items:
+                  _providers.map((provider) {
+                    return DropdownMenuItem(value: provider, child: Text(provider));
+                  }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedProvider = value!;
+                });
+              },
+            ),
+
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 12),
+
             // Intimacy Level Slider
             _buildSettingSection(
               title: 'Intimacy Level',
               description: 'Controls how personal or intimate the questions will be',
-              value: _intimacyLevel,
+              value: intimacyLevel,
               onChanged: (value) {
                 setState(() {
-                  _intimacyLevel = value;
+                  questionProvider.updateSettings(intimacy: value.toInt());
                 });
               },
               startLabel: 'Innocent',
-              midLabel: 'Personal',
+              midLabel: 'Sensual',
               endLabel: 'Sexual',
             ),
 
@@ -46,10 +84,10 @@ class _SettingsViewState extends State<SettingsView> {
             _buildSettingSection(
               title: 'Depth',
               description: 'Controls how deep or philosophical the questions will be',
-              value: _depthLevel,
+              value: depthLevel,
               onChanged: (value) {
                 setState(() {
-                  _depthLevel = value;
+                  questionProvider.updateSettings(depth: value.toInt());
                 });
               },
               startLabel: 'Surface-level',
@@ -63,14 +101,14 @@ class _SettingsViewState extends State<SettingsView> {
             _buildSettingSection(
               title: 'Purpose',
               description: 'Controls the intended purpose of the questions',
-              value: _purposeLevel,
+              value: purposeLevel,
               onChanged: (value) {
                 setState(() {
-                  _purposeLevel = value;
+                  questionProvider.updateSettings(purpose: value.toInt());
                 });
               },
               startLabel: 'Fun',
-              midLabel: 'Exploration/Bonding',
+              midLabel: 'Bonding/Exploration',
               endLabel: 'Conflict Resolution',
             ),
 
@@ -80,7 +118,7 @@ class _SettingsViewState extends State<SettingsView> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saveSettings,
+                onPressed: () => _saveSettings(questionProvider),
                 child: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Apply Settings')),
               ),
             ),
@@ -115,44 +153,40 @@ class _SettingsViewState extends State<SettingsView> {
         Stack(
           children: [
             // Container for setting the height
-            Container(
-              height: 20,
-              width: double.infinity,
-            ),
-            // Left label
+            Container(height: 30, width: double.infinity),
+            // Left label with value
             Positioned(
               left: 0,
-              child: Text(
-                startLabel,
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: 12,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text("1", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 11)),
+                  Text(startLabel, style: TextStyle(color: Colors.grey[700], fontSize: 11)),
+                ],
               ),
             ),
-            // Middle label
+            // Middle label with value
             Positioned(
               left: 0,
               right: 0,
               child: Center(
-                child: Text(
-                  midLabel,
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 12,
-                  ),
+                child: Column(
+                  children: [
+                    Text("5", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 11)),
+                    Text(midLabel, style: TextStyle(color: Colors.grey[700], fontSize: 11)),
+                  ],
                 ),
               ),
             ),
-            // Right label
+            // Right label with value
             Positioned(
               right: 0,
-              child: Text(
-                endLabel,
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: 12,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text("10", style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 11)),
+                  Text(endLabel, style: TextStyle(color: Colors.grey[700], fontSize: 11)),
+                ],
               ),
             ),
           ],
@@ -161,9 +195,17 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  void _saveSettings() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Settings updated successfully'), duration: Duration(seconds: 2)));
+  void _saveSettings(QuestionProvider provider) async {
+    // Update the provider selection if changed
+    if (provider.currentProvider != _selectedProvider) {
+      await provider.setProvider(_selectedProvider);
+    }
+
+    // Show confirmation
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Settings updated successfully'), duration: Duration(seconds: 2)));
+    }
   }
 }
