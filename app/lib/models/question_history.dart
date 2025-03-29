@@ -4,6 +4,7 @@ import 'package:csv/csv.dart';
 
 class QuestionRecord {
   final String question;
+  // Old parameters (kept for backward compatibility)
   final int intimacyLevel;
   final int depthLevel;
   final int purposeLevel;
@@ -15,6 +16,14 @@ class QuestionRecord {
   final String? enjoyment;
   final String? depthAppropriateness;
   final String? intimacyAppropriateness;
+  
+  // New parameters
+  final String? depthOfRelationship;
+  final String? moodTone;
+  final String? context;
+  final String? comfortLevelSetting;
+  final String? goalOfInteraction;
+  final String? thematicCategory;
 
   QuestionRecord({
     required this.question,
@@ -29,6 +38,13 @@ class QuestionRecord {
     this.enjoyment,
     this.depthAppropriateness,
     this.intimacyAppropriateness,
+    // New parameters
+    this.depthOfRelationship,
+    this.moodTone,
+    this.context,
+    this.comfortLevelSetting,
+    this.goalOfInteraction,
+    this.thematicCategory,
   });
 
   // Convert record to CSV row
@@ -46,12 +62,34 @@ class QuestionRecord {
       enjoyment ?? '',
       depthAppropriateness ?? '',
       intimacyAppropriateness ?? '',
+      // New parameters
+      depthOfRelationship ?? '',
+      moodTone ?? '',
+      context ?? '',
+      comfortLevelSetting ?? '',
+      goalOfInteraction ?? '',
+      thematicCategory ?? '',
     ];
   }
 
   // Create formatted history entry for LLM prompt
   String toPromptEntry(int index) {
-    return '''
+    // Primary representation using new parameters if available
+    if (depthOfRelationship != null && moodTone != null && context != null) {
+      return '''
+$index. "$question"
+   - Depth of Relationship: ${depthOfRelationship ?? 'Not specified'}
+   - Mood/Tone: ${moodTone ?? 'Not specified'}
+   - Context: ${context ?? 'Not specified'}
+   - Comfort Level: ${comfortLevelSetting ?? 'Not specified'}
+   - Goal of Interaction: ${goalOfInteraction ?? 'Not specified'}
+   - Thematic Category: ${thematicCategory ?? 'Not specified'}
+   - Rating: $rating/5
+   - Feedback: ${relevance ?? 'Not provided'}, ${comfortLevel ?? 'Not provided'}, ${enjoyment ?? 'Not provided'}
+''';
+    } else {
+      // Fallback for old format records
+      return '''
 $index. "$question"
    - Intimacy: $intimacyLevel | Depth: $depthLevel | Purpose: $purposeLevel
    - Rating: $rating/5
@@ -61,6 +99,7 @@ $index. "$question"
    - Depth Appropriateness: ${depthAppropriateness ?? 'Not provided'}
    - Intimacy Appropriateness: ${intimacyAppropriateness ?? 'Not provided'}
 ''';
+    }
   }
 }
 
@@ -79,6 +118,13 @@ class QuestionHistory {
     'Enjoyment',
     'Depth Appropriateness',
     'Intimacy Appropriateness',
+    // New parameters
+    'Depth of Relationship',
+    'Mood/Tone',
+    'Context',
+    'Comfort Level Setting',
+    'Goal of Interaction',
+    'Thematic Category',
   ];
 
   // Get file path
@@ -140,6 +186,7 @@ class QuestionHistory {
       
       // Skip the header row
       final recordsList = csvData.sublist(1).map((row) {
+        // Handle varying column counts for backward compatibility
         return QuestionRecord(
           question: row[0].toString(),
           intimacyLevel: int.tryParse(row[1].toString()) ?? 5,
@@ -153,6 +200,13 @@ class QuestionHistory {
           enjoyment: row[9].toString().isNotEmpty ? row[9].toString() : null,
           depthAppropriateness: row[10].toString().isNotEmpty ? row[10].toString() : null,
           intimacyAppropriateness: row[11].toString().isNotEmpty ? row[11].toString() : null,
+          // New parameters with safety check for column count
+          depthOfRelationship: row.length > 12 && row[12].toString().isNotEmpty ? row[12].toString() : null,
+          moodTone: row.length > 13 && row[13].toString().isNotEmpty ? row[13].toString() : null,
+          context: row.length > 14 && row[14].toString().isNotEmpty ? row[14].toString() : null,
+          comfortLevelSetting: row.length > 15 && row[15].toString().isNotEmpty ? row[15].toString() : null,
+          goalOfInteraction: row.length > 16 && row[16].toString().isNotEmpty ? row[16].toString() : null,
+          thematicCategory: row.length > 17 && row[17].toString().isNotEmpty ? row[17].toString() : null,
         );
       }).toList();
       

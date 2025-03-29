@@ -10,19 +10,33 @@ class QuestionProvider extends ChangeNotifier {
   bool _isLoading = false;
   String _errorMessage = '';
   
-  // Settings
-  int _intimacyLevel = 5;
-  int _depthLevel = 5;
-  int _purposeLevel = 5;
+  // Settings - New format
+  String _depthOfRelationship = 'Friends';
+  List<String> _moodTone = ['Funny/Playful'];
+  String _context = 'Casual hangout';
+  String _comfortLevel = 'Moderate';
+  List<String> _goalOfInteraction = ['Getting to know each other better'];
+  List<String> _thematicCategory = ['Past experiences'];
   String _currentProvider = 'OpenAI';
+  
+  // Options for dropdowns and multi-selects
+  final List<String> depthOptions = ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers'];
+  final List<String> moodOptions = ['Funny/Playful', 'Serious/Thoughtful', 'Deep/Reflective', 'Sensual/Intimate', 'Crazy/Absurd', 'Provocative/Dirty'];
+  final List<String> contextOptions = ['Casual hangout', 'Date night', 'Online chat', 'Party setting', 'Private/intimate setting', 'Road trip', 'Dinner conversation'];
+  final List<String> comfortOptions = ['Safe (low risk)', 'Moderate', 'High Risk'];
+  final List<String> goalOptions = ['Getting to know each other better', 'Deepening intimacy', 'Breaking the ice', 'Stimulating thoughtful discussion', 'Provoking humor/playfulness', 'Exploring fantasies/desires'];
+  final List<String> categoryOptions = ['Past experiences', 'Personal values/beliefs', 'Hypothetical scenarios', 'Dreams/goals/ambitions', 'Preferences', 'Relationships/intimacy', 'Secrets/confessions'];
   
   // Getters
   String get currentQuestion => _currentQuestion;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
-  int get intimacyLevel => _intimacyLevel;
-  int get depthLevel => _depthLevel;
-  int get purposeLevel => _purposeLevel;
+  String get depthOfRelationship => _depthOfRelationship;
+  List<String> get moodTone => _moodTone;
+  String get context => _context;
+  String get comfortLevel => _comfortLevel;
+  List<String> get goalOfInteraction => _goalOfInteraction;
+  List<String> get thematicCategory => _thematicCategory;
   String get currentProvider => _currentProvider;
   
   // Initialize the provider with default settings
@@ -79,10 +93,20 @@ class QuestionProvider extends ChangeNotifier {
   }
   
   // Update settings
-  void updateSettings({int? intimacy, int? depth, int? purpose}) {
-    if (intimacy != null) _intimacyLevel = intimacy;
-    if (depth != null) _depthLevel = depth;
-    if (purpose != null) _purposeLevel = purpose;
+  void updateSettings({
+    String? depthOfRelationship,
+    List<String>? moodTone,
+    String? context,
+    String? comfortLevel,
+    List<String>? goalOfInteraction,
+    List<String>? thematicCategory,
+  }) {
+    if (depthOfRelationship != null) _depthOfRelationship = depthOfRelationship;
+    if (moodTone != null) _moodTone = moodTone;
+    if (context != null) _context = context;
+    if (comfortLevel != null) _comfortLevel = comfortLevel;
+    if (goalOfInteraction != null) _goalOfInteraction = goalOfInteraction;
+    if (thematicCategory != null) _thematicCategory = thematicCategory;
     notifyListeners();
   }
   
@@ -99,10 +123,18 @@ class QuestionProvider extends ChangeNotifier {
       // Get formatted question history for the prompt
       final questionHistory = await QuestionHistory.getFormattedHistory();
       
+      // Concatenate multi-select values for the prompt
+      final moodToneStr = _moodTone.join(' | ');
+      final goalStr = _goalOfInteraction.join(' | ');
+      final categoryStr = _thematicCategory.join(' | ');
+      
       final question = await _llmService.generateRelationshipQuestion(
-        intimacyLevel: _intimacyLevel,
-        depthLevel: _depthLevel,
-        purposeLevel: _purposeLevel,
+        depthOfRelationship: _depthOfRelationship,
+        moodTone: moodToneStr,
+        context: _context,
+        comfortLevel: _comfortLevel,
+        goalOfInteraction: goalStr,
+        thematicCategory: categoryStr,
         questionHistory: questionHistory,
       );
       
@@ -128,11 +160,15 @@ class QuestionProvider extends ChangeNotifier {
     String? intimacyAppropriateness,
   }) async {
     try {
+      // For historical purposes, we'll keep the same format but set default values
+      // since we've changed the parameters
+      const int defaultParamValue = 5;
+      
       final record = QuestionRecord(
         question: _currentQuestion,
-        intimacyLevel: _intimacyLevel,
-        depthLevel: _depthLevel,
-        purposeLevel: _purposeLevel,
+        intimacyLevel: defaultParamValue,
+        depthLevel: defaultParamValue,
+        purposeLevel: defaultParamValue,
         rating: rating,
         moreLikeThis: moreLikeThis,
         lessLikeThis: lessLikeThis,
@@ -141,6 +177,13 @@ class QuestionProvider extends ChangeNotifier {
         enjoyment: enjoyment,
         depthAppropriateness: depthAppropriateness,
         intimacyAppropriateness: intimacyAppropriateness,
+        // Add new parameters
+        depthOfRelationship: _depthOfRelationship,
+        moodTone: _moodTone.join(', '),
+        context: _context,
+        comfortLevelSetting: _comfortLevel,
+        goalOfInteraction: _goalOfInteraction.join(', '),
+        thematicCategory: _thematicCategory.join(', '),
       );
       
       await QuestionHistory.addRecord(record);
