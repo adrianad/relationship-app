@@ -136,7 +136,15 @@ class _QuestionsViewState extends State<QuestionsView> {
         title: const Text('Relationship Questions'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Manage Profiles',
+            onPressed: () {
+              Navigator.pushNamed(context, '/profiles');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
             onPressed: () {
               Navigator.pushNamed(context, '/settings');
             },
@@ -317,7 +325,7 @@ class _QuestionsViewState extends State<QuestionsView> {
     );
   }
   
-  // Save current feedback to CSV
+  // Save current feedback to database
   void _saveCurrentFeedback() {
     // Skip if this is the default question
     if (_currentQuestion == widget.questionText) return;

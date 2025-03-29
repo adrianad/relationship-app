@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:app/services/llm_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:app/models/question_history.dart';
+import 'package:app/models/question_record.dart';
+import 'package:app/models/profile.dart';
+import 'package:app/database/database_helper.dart';
 
 class QuestionProvider extends ChangeNotifier {
   final LLMService _llmService = LLMService();
+  final DatabaseHelper _db = DatabaseHelper.instance;
   
   String _currentQuestion = "How was your day today?";
   bool _isLoading = false;
   String _errorMessage = '';
   
-  // Settings - New format
-  String _depthOfRelationship = 'Friends';
-  List<String> _moodTone = ['Funny/Playful'];
-  String _context = 'Casual hangout';
-  String _comfortLevel = 'Moderate';
-  List<String> _goalOfInteraction = ['Getting to know each other better'];
-  List<String> _thematicCategory = ['Past experiences'];
-  String _currentProvider = 'OpenAI';
+  // Active profile reference - will be set by the app
+  Profile? _activeProfile;
   
   // Options for dropdowns and multi-selects
   final List<String> depthOptions = ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers'];
@@ -31,24 +28,34 @@ class QuestionProvider extends ChangeNotifier {
   String get currentQuestion => _currentQuestion;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
-  String get depthOfRelationship => _depthOfRelationship;
-  List<String> get moodTone => _moodTone;
-  String get context => _context;
-  String get comfortLevel => _comfortLevel;
-  List<String> get goalOfInteraction => _goalOfInteraction;
-  List<String> get thematicCategory => _thematicCategory;
-  String get currentProvider => _currentProvider;
   
-  // Initialize the provider with default settings
-  QuestionProvider() {
-    // Initialize with a safe default - no API calls until explicitly requested
-    _currentProvider = 'OpenAI';
+  // Forward profile getters
+  String get depthOfRelationship => _activeProfile?.depthOfRelationship ?? 'Friends';
+  List<String> get moodTone => _activeProfile?.moodTone ?? ['Funny/Playful'];
+  String get context => _activeProfile?.context ?? 'Casual hangout';
+  String get comfortLevel => _activeProfile?.comfortLevel ?? 'Moderate';
+  List<String> get goalOfInteraction => _activeProfile?.goalOfInteraction ?? ['Getting to know each other better'];
+  List<String> get thematicCategory => _activeProfile?.thematicCategory ?? ['Past experiences'];
+  String get currentProvider => _activeProfile?.llmProvider ?? 'OpenAI';
+  
+  // Set active profile
+  void setActiveProfile(Profile profile) {
+    _activeProfile = profile;
+    notifyListeners();
   }
   
   // Initialize the LLM service with the selected provider
   Future<void> _initializeService() async {
     try {
-      switch (_currentProvider) {
+      if (_activeProfile == null) {
+        // Get active profile from database if not set
+        _activeProfile = await _db.getActiveProfile();
+        if (_activeProfile == null) {
+          throw Exception('No active profile found');
+        }
+      }
+      
+      switch (_activeProfile!.llmProvider) {
         case 'OpenAI':
           _llmService.setProvider(LLMProviderFactory.createOpenAIProvider());
           break;
@@ -59,7 +66,6 @@ class QuestionProvider extends ChangeNotifier {
           _llmService.setProvider(LLMProviderFactory.createGeminiProvider());
           break;
         default:
-          // Default to a placeholder provider if none available
           _errorMessage = 'Please select a provider in settings';
       }
     } catch (e) {
@@ -68,9 +74,17 @@ class QuestionProvider extends ChangeNotifier {
     }
   }
   
-  // Change the LLM provider
+  // Change the LLM provider for the active profile
   Future<void> setProvider(String providerName) async {
     try {
+      if (_activeProfile == null) {
+        throw Exception('No active profile');
+      }
+      
+      final updatedProfile = _activeProfile!.copyWith(llmProvider: providerName);
+      await _db.updateProfile(updatedProfile);
+      _activeProfile = updatedProfile;
+      
       switch (providerName) {
         case 'OpenAI':
           _llmService.setProvider(LLMProviderFactory.createOpenAIProvider());
@@ -84,7 +98,7 @@ class QuestionProvider extends ChangeNotifier {
         default:
           throw Exception('Unknown provider: $providerName');
       }
-      _currentProvider = providerName;
+      
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to set provider: ${e.toString()}';
@@ -92,22 +106,36 @@ class QuestionProvider extends ChangeNotifier {
     }
   }
   
-  // Update settings
-  void updateSettings({
+  // Update settings for the active profile
+  Future<void> updateSettings({
     String? depthOfRelationship,
     List<String>? moodTone,
     String? context,
     String? comfortLevel,
     List<String>? goalOfInteraction,
     List<String>? thematicCategory,
-  }) {
-    if (depthOfRelationship != null) _depthOfRelationship = depthOfRelationship;
-    if (moodTone != null) _moodTone = moodTone;
-    if (context != null) _context = context;
-    if (comfortLevel != null) _comfortLevel = comfortLevel;
-    if (goalOfInteraction != null) _goalOfInteraction = goalOfInteraction;
-    if (thematicCategory != null) _thematicCategory = thematicCategory;
-    notifyListeners();
+  }) async {
+    try {
+      if (_activeProfile == null) {
+        throw Exception('No active profile');
+      }
+      
+      final updatedProfile = _activeProfile!.copyWith(
+        depthOfRelationship: depthOfRelationship,
+        moodTone: moodTone,
+        context: context,
+        comfortLevel: comfortLevel,
+        goalOfInteraction: goalOfInteraction,
+        thematicCategory: thematicCategory,
+      );
+      
+      await _db.updateProfile(updatedProfile);
+      _activeProfile = updatedProfile;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Failed to update settings: ${e.toString()}';
+      notifyListeners();
+    }
   }
   
   // Generate a new question
@@ -117,22 +145,30 @@ class QuestionProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
+      // Ensure we have an active profile
+      if (_activeProfile == null) {
+        _activeProfile = await _db.getActiveProfile();
+        if (_activeProfile == null) {
+          throw Exception('No active profile found');
+        }
+      }
+      
       // Initialize the service if needed
       await _initializeService();
       
       // Get formatted question history for the prompt
-      final questionHistory = await QuestionHistory.getFormattedHistory();
+      final questionHistory = await _db.getFormattedHistory(_activeProfile!.id!);
       
       // Concatenate multi-select values for the prompt
-      final moodToneStr = _moodTone.join(' | ');
-      final goalStr = _goalOfInteraction.join(' | ');
-      final categoryStr = _thematicCategory.join(' | ');
+      final moodToneStr = _activeProfile!.moodTone.join(' | ');
+      final goalStr = _activeProfile!.goalOfInteraction.join(' | ');
+      final categoryStr = _activeProfile!.thematicCategory.join(' | ');
       
       final question = await _llmService.generateRelationshipQuestion(
-        depthOfRelationship: _depthOfRelationship,
+        depthOfRelationship: _activeProfile!.depthOfRelationship,
         moodTone: moodToneStr,
-        context: _context,
-        comfortLevel: _comfortLevel,
+        context: _activeProfile!.context,
+        comfortLevel: _activeProfile!.comfortLevel,
         goalOfInteraction: goalStr,
         thematicCategory: categoryStr,
         questionHistory: questionHistory,
@@ -148,7 +184,7 @@ class QuestionProvider extends ChangeNotifier {
     }
   }
   
-  // Save question with feedback to history
+  // Save question with feedback to database
   Future<void> saveQuestionToHistory({
     required int rating,
     required bool moreLikeThis,
@@ -160,15 +196,14 @@ class QuestionProvider extends ChangeNotifier {
     String? intimacyAppropriateness,
   }) async {
     try {
-      // For historical purposes, we'll keep the same format but set default values
-      // since we've changed the parameters
-      const int defaultParamValue = 5;
+      if (_activeProfile == null) {
+        throw Exception('No active profile found');
+      }
       
+      // Prepare the record
       final record = QuestionRecord(
+        profileId: _activeProfile!.id!,
         question: _currentQuestion,
-        intimacyLevel: defaultParamValue,
-        depthLevel: defaultParamValue,
-        purposeLevel: defaultParamValue,
         rating: rating,
         moreLikeThis: moreLikeThis,
         lessLikeThis: lessLikeThis,
@@ -177,16 +212,16 @@ class QuestionProvider extends ChangeNotifier {
         enjoyment: enjoyment,
         depthAppropriateness: depthAppropriateness,
         intimacyAppropriateness: intimacyAppropriateness,
-        // Add new parameters
-        depthOfRelationship: _depthOfRelationship,
-        moodTone: _moodTone.join(', '),
-        context: _context,
-        comfortLevelSetting: _comfortLevel,
-        goalOfInteraction: _goalOfInteraction.join(', '),
-        thematicCategory: _thematicCategory.join(', '),
+        // Settings used to generate this question
+        depthOfRelationship: _activeProfile!.depthOfRelationship,
+        moodTone: _activeProfile!.moodTone.join(', '),
+        context: _activeProfile!.context,
+        comfortLevelSetting: _activeProfile!.comfortLevel,
+        goalOfInteraction: _activeProfile!.goalOfInteraction.join(', '),
+        thematicCategory: _activeProfile!.thematicCategory.join(', '),
       );
       
-      await QuestionHistory.addRecord(record);
+      await _db.insertQuestion(record);
     } catch (e) {
       print('Error saving question to history: $e');
     }

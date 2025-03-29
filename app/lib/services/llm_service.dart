@@ -33,7 +33,10 @@ class OpenAIProvider implements LLMProvider {
     try {
       final response = await http.post(
         Uri.parse(_endpoint),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8', 
+          'Authorization': 'Bearer $_apiKey'
+        },
         body: jsonEncode({
           'model': _model,
           'messages': [
@@ -45,8 +48,10 @@ class OpenAIProvider implements LLMProvider {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'].trim();
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['choices'][0]['message']['content'].trim();
+        // Normalize apostrophes and quotes to ensure they display correctly
+        return _normalizeText(content);
       } else {
         throw Exception('API Error: ${response.statusCode} - ${response.body}');
       }
@@ -81,7 +86,11 @@ class AnthropicProvider implements LLMProvider {
     try {
       final response = await http.post(
         Uri.parse(_endpoint),
-        headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01'},
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8', 
+          'x-api-key': _apiKey, 
+          'anthropic-version': '2023-06-01'
+        },
         body: jsonEncode({
           'model': _model,
           'messages': [
@@ -93,8 +102,10 @@ class AnthropicProvider implements LLMProvider {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['content'][0]['text'].trim();
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['content'][0]['text'].trim();
+        // Normalize apostrophes and quotes to ensure they display correctly
+        return _normalizeText(content);
       } else {
         throw Exception('API Error: ${response.statusCode} - ${response.body}');
       }
@@ -132,7 +143,7 @@ class GeminiProvider implements LLMProvider {
 
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: jsonEncode({
           'contents': [
             {
@@ -146,8 +157,10 @@ class GeminiProvider implements LLMProvider {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['candidates'][0]['content']['parts'][0]['text'].trim();
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['candidates'][0]['content']['parts'][0]['text'].trim();
+        // Normalize apostrophes and quotes to ensure they display correctly
+        return _normalizeText(content);
       } else {
         throw Exception('API Error: ${response.statusCode} - ${response.body}');
       }
@@ -185,6 +198,20 @@ class LLMService {
 
   /// Get info about current provider
   String get currentProviderInfo => '${_provider.providerName} (${_provider.modelIdentifier})';
+  
+  /// Helper method to normalize text encoding issues
+  String _normalizeText(String text) {
+    // Replace common problematic characters
+    return text
+      .replaceAll(''', "'")
+      .replaceAll(''', "'")
+      .replaceAll('"', '"')
+      .replaceAll('"', '"')
+      .replaceAll('–', '-')
+      .replaceAll('—', '-')
+      .replaceAll('…', '...')
+      .replaceAll('\u00A0', ' '); // Replace non-breaking space with regular space
+  }
 
   /// Generate a relationship question using the configured provider
   Future<String> generateRelationshipQuestion({
