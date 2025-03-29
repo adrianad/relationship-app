@@ -134,6 +134,30 @@ class QuestionRecord {
 
   // Create formatted history entry for LLM prompt
   String toPromptEntry(int index) {
+    // Build detailed feedback section
+    String feedbackSection = '';
+    
+    // Format main feedback indicators
+    if (moreLikeThis) {
+      feedbackSection += "👍 User wants MORE questions like this. ";
+    }
+    if (lessLikeThis) {
+      feedbackSection += "👎 User wants FEWER questions like this. ";
+    }
+    
+    // Format categorical feedback with clear labels
+    List<String> detailedFeedback = [];
+    if (relevance != null) detailedFeedback.add("Relevance: $relevance");
+    if (comfortLevel != null) detailedFeedback.add("Comfort Level: $comfortLevel");
+    if (enjoyment != null) detailedFeedback.add("Enjoyment: $enjoyment");
+    if (depthAppropriateness != null) detailedFeedback.add("Depth Appropriateness: $depthAppropriateness");
+    if (intimacyAppropriateness != null) detailedFeedback.add("Intimacy Appropriateness: $intimacyAppropriateness");
+    
+    // Add detailed feedback if any was provided
+    if (detailedFeedback.isNotEmpty) {
+      feedbackSection += "\n      Detailed feedback: " + detailedFeedback.join("; ");
+    }
+    
     return '''
 $index. "$question"
    - Depth of Relationship: $depthOfRelationship
@@ -142,8 +166,8 @@ $index. "$question"
    - Comfort Level: $comfortLevelSetting
    - Goal of Interaction: $goalOfInteraction
    - Thematic Category: $thematicCategory
-   - Rating: $rating/5
-   - Feedback: ${relevance ?? 'Not provided'}, ${comfortLevel ?? 'Not provided'}, ${enjoyment ?? 'Not provided'}
+   - User Rating: $rating/5
+   - User Feedback: ${feedbackSection.isEmpty ? 'None provided' : feedbackSection}
 ''';
   }
 }

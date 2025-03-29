@@ -81,12 +81,27 @@ class _ProfilesViewState extends State<ProfilesView> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    // Settings button
+                                    IconButton(
+                                      icon: const Icon(Icons.settings),
+                                      tooltip: 'Configure settings',
+                                      onPressed: () {
+                                        // Set this profile as active
+                                        if (profile.id != profileProvider.activeProfile?.id) {
+                                          profileProvider.setActiveProfile(profile.id!);
+                                        }
+                                        // Navigate to settings
+                                        Navigator.pushNamed(context, '/settings');
+                                      },
+                                    ),
                                     IconButton(
                                       icon: const Icon(Icons.edit),
+                                      tooltip: 'Edit profile',
                                       onPressed: () => _showEditDialog(context, profile),
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete),
+                                      tooltip: 'Delete profile',
                                       onPressed: profileProvider.profiles.length <= 1
                                           ? null  // Disable deletion of last profile
                                           : () => _showDeleteDialog(context, profile),

@@ -19,11 +19,7 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+    return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -94,11 +90,7 @@ class DatabaseHelper {
 
   Future<Profile?> getProfile(int id) async {
     final db = await database;
-    final maps = await db.query(
-      'profiles',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final maps = await db.query('profiles', where: 'id = ?', whereArgs: [id]);
 
     if (maps.isNotEmpty) {
       return Profile.fromMap(maps.first);
@@ -108,11 +100,7 @@ class DatabaseHelper {
 
   Future<Profile?> getActiveProfile() async {
     final db = await database;
-    final maps = await db.query(
-      'profiles',
-      where: 'is_active = ?',
-      whereArgs: [1],
-    );
+    final maps = await db.query('profiles', where: 'is_active = ?', whereArgs: [1]);
 
     if (maps.isNotEmpty) {
       return Profile.fromMap(maps.first);
@@ -122,41 +110,24 @@ class DatabaseHelper {
 
   Future<int> updateProfile(Profile profile) async {
     final db = await database;
-    return await db.update(
-      'profiles',
-      profile.toMap(),
-      where: 'id = ?',
-      whereArgs: [profile.id],
-    );
+    return await db.update('profiles', profile.toMap(), where: 'id = ?', whereArgs: [profile.id]);
   }
 
   Future<int> deleteProfile(int id) async {
     final db = await database;
-    return await db.delete(
-      'profiles',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('profiles', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> setActiveProfile(int id) async {
     final db = await database;
-    
+
     // Begin transaction
     await db.transaction((txn) async {
       // First, set all profiles to inactive
-      await txn.update(
-        'profiles',
-        {'is_active': 0},
-      );
-      
+      await txn.update('profiles', {'is_active': 0});
+
       // Then set the selected profile to active
-      await txn.update(
-        'profiles',
-        {'is_active': 1},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      await txn.update('profiles', {'is_active': 1}, where: 'id = ?', whereArgs: [id]);
     });
   }
 
@@ -218,43 +189,34 @@ class DatabaseHelper {
 
   Future<int> updateQuestion(QuestionRecord question) async {
     final db = await database;
-    return await db.update(
-      'questions',
-      question.toMap(),
-      where: 'id = ?',
-      whereArgs: [question.id],
-    );
+    return await db.update('questions', question.toMap(), where: 'id = ?', whereArgs: [question.id]);
   }
 
   Future<int> deleteQuestion(int id) async {
     final db = await database;
-    return await db.delete(
-      'questions',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('questions', where: 'id = ?', whereArgs: [id]);
   }
 
   // Formatting history for prompts
-  Future<String> getFormattedHistory(int profileId, {int maxRecords = 5}) async {
+  Future<String> getFormattedHistory(int profileId, {int maxRecords = 100}) async {
     final questions = await getQuestionsForProfile(profileId, limit: maxRecords);
-    
+
     if (questions.isEmpty) {
       return '';
     }
-    
+
     // Build the formatted history string
     String historyText = '\n**Avoid repeating previously asked questions** listed below (with provided feedback):\n\n';
-    
+
     for (int i = 0; i < questions.length; i++) {
       historyText += questions[i].toPromptEntry(i + 1);
-      
+
       // Add spacing between entries
       if (i < questions.length - 1) {
         historyText += '\n';
       }
     }
-    
+
     return historyText;
   }
 
