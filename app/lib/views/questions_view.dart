@@ -76,6 +76,17 @@ class _QuestionsViewState extends State<QuestionsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Relationship Questions'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.pushNamed(context, '/settings');
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -144,70 +155,75 @@ class _QuestionsViewState extends State<QuestionsView> {
               // Structured feedback categories
               Expanded(
                 child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Relevance
-                      _buildFeedbackCategory(
-                        "Relevance", 
-                        _relevanceOptions, 
-                        _relevance, 
-                        (value) => setState(() => _relevance = value)
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Comfort Level
-                      _buildFeedbackCategory(
-                        "Comfort Level", 
-                        _comfortOptions, 
-                        _comfortLevel, 
-                        (value) => setState(() => _comfortLevel = value)
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Enjoyment
-                      _buildFeedbackCategory(
-                        "Enjoyment", 
-                        _enjoymentOptions, 
-                        _enjoyment, 
-                        (value) => setState(() => _enjoyment = value)
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Depth Appropriateness
-                      _buildFeedbackCategory(
-                        "Depth Appropriateness", 
-                        _depthOptions, 
-                        _depthAppropriateness, 
-                        (value) => setState(() => _depthAppropriateness = value)
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Intimacy Appropriateness
-                      _buildFeedbackCategory(
-                        "Intimacy Appropriateness", 
-                        _intimacyOptions, 
-                        _intimacyAppropriateness, 
-                        (value) => setState(() => _intimacyAppropriateness = value)
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Relevance
+                        _buildFeedbackCategory(
+                          "Relevance", 
+                          _relevanceOptions, 
+                          _relevance, 
+                          (value) => setState(() => _relevance = value)
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Comfort Level
+                        _buildFeedbackCategory(
+                          "Comfort Level", 
+                          _comfortOptions, 
+                          _comfortLevel, 
+                          (value) => setState(() => _comfortLevel = value)
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Enjoyment
+                        _buildFeedbackCategory(
+                          "Enjoyment", 
+                          _enjoymentOptions, 
+                          _enjoyment, 
+                          (value) => setState(() => _enjoyment = value)
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Depth Appropriateness
+                        _buildFeedbackCategory(
+                          "Depth Appropriateness", 
+                          _depthOptions, 
+                          _depthAppropriateness, 
+                          (value) => setState(() => _depthAppropriateness = value)
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Intimacy Appropriateness
+                        _buildFeedbackCategory(
+                          "Intimacy Appropriateness", 
+                          _intimacyOptions, 
+                          _intimacyAppropriateness, 
+                          (value) => setState(() => _intimacyAppropriateness = value)
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               
-              const SizedBox(height: 16),
-
               // New question button at bottom
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loadNewQuestion,
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                  child: const Text("New question"),
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _loadNewQuestion,
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                    child: const Text("New question"),
+                  ),
                 ),
               ),
             ],
@@ -226,24 +242,32 @@ class _QuestionsViewState extends State<QuestionsView> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           title, 
           style: TextStyle(
             color: Colors.grey.shade700,
             fontWeight: FontWeight.bold,
+            fontSize: 13,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Wrap(
-          spacing: 8,
+          spacing: 6,
+          runSpacing: 4,
           children: options.map((option) {
             final isSelected = selectedValue == option;
             return ChoiceChip(
-              label: Text(option),
+              label: Text(
+                option,
+                style: TextStyle(fontSize: 12),
+              ),
               selected: isSelected,
               selectedColor: Colors.blue.shade100,
               backgroundColor: Colors.grey.shade200,
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               onSelected: (selected) {
                 if (selected) {
                   onSelected(option);
