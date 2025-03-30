@@ -2,6 +2,8 @@ import 'package:app/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app/providers/question_provider.dart';
+import 'package:app/generated/app_localizations.dart';
+import 'package:app/widgets/language_selector.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -19,25 +21,84 @@ class _SettingsViewState extends State<SettingsView> {
   List<String> _selectedMoodTone = ['Funny/Playful'];
   List<String> _selectedGoals = ['Getting to know each other better'];
   List<String> _selectedCategories = ['Past experiences'];
+  
+  // Helper function to get localized text for options while keeping original values for the prompt
+  String getLocalizedOption(BuildContext context, String option) {
+    final localizations = AppLocalizations.of(context);
+    
+    // LLM Provider
+    if (option == 'OpenAI') return localizations.openAiProvider;
+    if (option == 'Anthropic') return localizations.anthropicProvider;
+    if (option == 'Gemini') return localizations.geminiProvider;
+    
+    // Depth Options
+    if (option == 'Acquaintances') return localizations.depthAcquaintances;
+    if (option == 'Friends') return localizations.depthFriends;
+    if (option == 'Close Friends') return localizations.depthCloseFriends;
+    if (option == 'Partners/Lovers') return localizations.depthPartners;
+    
+    // Mood/Tone Options
+    if (option == 'Funny/Playful') return localizations.moodFunny;
+    if (option == 'Serious/Thoughtful') return localizations.moodSerious;
+    if (option == 'Deep/Reflective') return localizations.moodDeep;
+    if (option == 'Sensual/Intimate') return localizations.moodSensual;
+    if (option == 'Crazy/Absurd') return localizations.moodCrazy;
+    if (option == 'Provocative/Dirty') return localizations.moodProvocative;
+    
+    // Context Options
+    if (option == 'Casual hangout') return localizations.contextCasual;
+    if (option == 'Date night') return localizations.contextDate;
+    if (option == 'Online chat') return localizations.contextOnline;
+    if (option == 'Party setting') return localizations.contextParty;
+    if (option == 'Private/intimate setting') return localizations.contextPrivate;
+    if (option == 'Road trip') return localizations.contextRoadTrip;
+    if (option == 'Dinner conversation') return localizations.contextDinner;
+    
+    // Comfort Options
+    if (option == 'Safe (low risk)') return localizations.comfortSafe;
+    if (option == 'Moderate') return localizations.comfortModerate;
+    if (option == 'High Risk') return localizations.comfortHighRisk;
+    
+    // Goal Options
+    if (option == 'Getting to know each other better') return localizations.goalGettingToKnow;
+    if (option == 'Deepening intimacy') return localizations.goalDeepening;
+    if (option == 'Breaking the ice') return localizations.goalBreakingIce;
+    if (option == 'Stimulating thoughtful discussion') return localizations.goalThoughtful;
+    if (option == 'Provoking humor/playfulness') return localizations.goalHumor;
+    if (option == 'Exploring fantasies/desires') return localizations.goalFantasies;
+    
+    // Category Options
+    if (option == 'Past experiences') return localizations.categoryPast;
+    if (option == 'Personal values/beliefs') return localizations.categoryValues;
+    if (option == 'Hypothetical scenarios') return localizations.categoryHypothetical;
+    if (option == 'Dreams/goals/ambitions') return localizations.categoryDreams;
+    if (option == 'Preferences') return localizations.categoryPreferences;
+    if (option == 'Relationships/intimacy') return localizations.categoryRelationships;
+    if (option == 'Secrets/confessions') return localizations.categorySecrets;
+    
+    // Default fallback
+    return option;
+  }
 
   @override
   Widget build(BuildContext context) {
     final questionProvider = Provider.of<QuestionProvider>(context);
     final profileProvider = Provider.of<ProfileProvider>(context);
+    final localizations = AppLocalizations.of(context);
 
     // Access the active profile via the profile provider
     final activeProfile = profileProvider.activeProfile;
     if (activeProfile == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Settings'),
+          title: Text(localizations.settings),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: const Center(
-          child: Text('No active profile found. Please create a profile first.'),
+        body: Center(
+          child: Text(localizations.noActiveProfile),
         ),
       );
     }
@@ -50,11 +111,11 @@ class _SettingsViewState extends State<SettingsView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Settings for ${activeProfile.name}'),
+        title: Text(localizations.settingsFor(activeProfile.name)),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
-            tooltip: 'Manage Profiles',
+            tooltip: localizations.manageProfiles,
             onPressed: () {
               Navigator.pushNamed(context, '/profiles');
             },
@@ -66,15 +127,24 @@ class _SettingsViewState extends State<SettingsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Question Generation Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            // Language selector
+            const LanguageSelector(),
+            
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 12),
+            
+            Text(localizations.questionGenerationSettings, 
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
 
             // LLM Provider selection
-            const Text('LLM Provider', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.llmProvider, 
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'Select which AI provider to use for generating questions',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Text(
+              localizations.selectAiProviderHint,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -85,7 +155,10 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               items:
                   _providers.map((provider) {
-                    return DropdownMenuItem(value: provider, child: Text(provider));
+                    return DropdownMenuItem(
+                      value: provider, 
+                      child: Text(getLocalizedOption(context, provider))
+                    );
                   }).toList(),
               onChanged: (value) {
                 setState(() {
@@ -99,9 +172,9 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 12),
 
             // Depth of Relationship
-            const Text('Depth of Relationship', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.depthOfRelationship, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('How well do the people know each other?', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            Text(localizations.howWellPeopleKnowEachOther, style: const TextStyle(color: Colors.grey, fontSize: 14)),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: questionProvider.depthOfRelationship,
@@ -111,7 +184,10 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               items:
                   questionProvider.depthOptions.map((option) {
-                    return DropdownMenuItem(value: option, child: Text(option));
+                    return DropdownMenuItem(
+                      value: option, 
+                      child: Text(getLocalizedOption(context, option))
+                    );
                   }).toList(),
               onChanged: (value) {
                 if (value != null) {
@@ -123,11 +199,11 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 24),
 
             // Mood/Tone (multi-select)
-            const Text('Mood/Tone', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.moodTone, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'Select one or more desired tones for the questions',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Text(
+              localizations.selectTonesForQuestions,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -137,7 +213,7 @@ class _SettingsViewState extends State<SettingsView> {
                   questionProvider.moodOptions.map((option) {
                     final isSelected = _selectedMoodTone.contains(option);
                     return FilterChip(
-                      label: Text(option),
+                      label: Text(getLocalizedOption(context, option)),
                       selected: isSelected,
                       onSelected: (selected) {
                         setState(() {
@@ -160,11 +236,11 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 24),
 
             // Context
-            const Text('Context', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.context, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'In what setting will this conversation take place?',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Text(
+              localizations.settingForConversation,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -175,7 +251,7 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               items:
                   questionProvider.contextOptions.map((option) {
-                    return DropdownMenuItem(value: option, child: Text(option));
+                    return DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option)));
                   }).toList(),
               onChanged: (value) {
                 if (value != null) {
@@ -187,11 +263,11 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 24),
 
             // Comfort Level
-            const Text('Comfort Level', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.comfortLevel, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'How challenging or personal should the questions be?',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Text(
+              localizations.howChallengingQuestionsBecome,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -202,7 +278,7 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               items:
                   questionProvider.comfortOptions.map((option) {
-                    return DropdownMenuItem(value: option, child: Text(option));
+                    return DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option)));
                   }).toList(),
               onChanged: (value) {
                 if (value != null) {
@@ -214,11 +290,11 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 24),
 
             // Goal of Interaction (multi-select)
-            const Text('Goal of Interaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.goalOfInteraction, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'What should these questions help accomplish?',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Text(
+              localizations.whatQuestionsAccomplish,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -228,7 +304,7 @@ class _SettingsViewState extends State<SettingsView> {
                   questionProvider.goalOptions.map((option) {
                     final isSelected = _selectedGoals.contains(option);
                     return FilterChip(
-                      label: Text(option),
+                      label: Text(getLocalizedOption(context, option)),
                       selected: isSelected,
                       onSelected: (selected) {
                         setState(() {
@@ -251,11 +327,11 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 24),
 
             // Thematic Category (multi-select)
-            const Text('Thematic Category', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(localizations.thematicCategory, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'What kinds of topics should the questions cover?',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Text(
+              localizations.topicsQuestionsShoulCover,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -265,7 +341,7 @@ class _SettingsViewState extends State<SettingsView> {
                   questionProvider.categoryOptions.map((option) {
                     final isSelected = _selectedCategories.contains(option);
                     return FilterChip(
-                      label: Text(option),
+                      label: Text(getLocalizedOption(context, option)),
                       selected: isSelected,
                       onSelected: (selected) {
                         setState(() {
@@ -291,8 +367,11 @@ class _SettingsViewState extends State<SettingsView> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => _saveSettings(questionProvider),
-                child: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Apply Settings')),
+                onPressed: () => _saveSettings(questionProvider, context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12), 
+                  child: Text(localizations.applySettings)
+                ),
               ),
             ),
           ],
@@ -301,7 +380,9 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  void _saveSettings(QuestionProvider provider) async {
+  void _saveSettings(QuestionProvider provider, BuildContext context) async {
+    final localizations = AppLocalizations.of(context);
+    
     // Update the provider selection if changed
     if (provider.currentProvider != _selectedProvider) {
       await provider.setProvider(_selectedProvider);
@@ -311,7 +392,10 @@ class _SettingsViewState extends State<SettingsView> {
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Settings updated successfully'), duration: Duration(seconds: 2)));
+      ).showSnackBar(SnackBar(
+        content: Text(localizations.settingsUpdatedSuccessfully), 
+        duration: const Duration(seconds: 2)
+      ));
     }
   }
 }

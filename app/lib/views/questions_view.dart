@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app/providers/question_provider.dart';
+import 'package:app/providers/language_provider.dart';
+import 'package:app/generated/app_localizations.dart';
 
 class QuestionsView extends StatefulWidget {
   final String questionText;
@@ -24,12 +26,12 @@ class _QuestionsViewState extends State<QuestionsView> {
   String? _depthAppropriateness;
   String? _intimacyAppropriateness;
   
-  // Feedback options
-  final List<String> _relevanceOptions = ['Very relevant', 'Somewhat relevant', 'Not relevant'];
-  final List<String> _comfortOptions = ['Comfortable', 'Neutral', 'Uncomfortable'];
-  final List<String> _enjoymentOptions = ['Enjoyable', 'Neutral', 'Not enjoyable'];
-  final List<String> _depthOptions = ['Too deep', 'Just right', 'Too shallow'];
-  final List<String> _intimacyOptions = ['Too intimate', 'Appropriate', 'Not intimate enough'];
+  // Feedback options (will be localized in the build method)
+  late List<String> _relevanceOptions;
+  late List<String> _comfortOptions;
+  late List<String> _enjoymentOptions;
+  late List<String> _depthOptions;
+  late List<String> _intimacyOptions;
 
   @override
   void initState() {
@@ -39,20 +41,29 @@ class _QuestionsViewState extends State<QuestionsView> {
     // We need to use a post-frame callback for any provider access in initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final questionProvider = Provider.of<QuestionProvider>(context, listen: false);
-      // Initialize with the current question from provider if available
-      if (questionProvider.currentQuestion != "How was your day today?") {
-        setState(() {
-          _currentQuestion = questionProvider.currentQuestion;
-        });
-      }
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      
+      // Make sure the question provider has the correct language
+      questionProvider.updateDefaultQuestion(languageProvider.currentLocale.languageCode);
+      
+      // Initialize with the current question from provider
+      setState(() {
+        _currentQuestion = questionProvider.currentQuestion;
+      });
     });
   }
 
   void _loadNewQuestion() async {
     final questionProvider = Provider.of<QuestionProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    
+    // Get the default question for the current language
+    final defaultQuestion = questionProvider.getDefaultQuestion(
+      languageProvider.currentLocale.languageCode
+    );
     
     // First, save current question's feedback to history (if it's not the default question)
-    if (_currentQuestion != widget.questionText) {
+    if (_currentQuestion != defaultQuestion) {
       await questionProvider.saveQuestionToHistory(
         rating: _rating,
         moreLikeThis: _moreLikeThis,
@@ -70,8 +81,10 @@ class _QuestionsViewState extends State<QuestionsView> {
     });
     
     try {
-      // Load new question from the question provider
-      await questionProvider.generateQuestion();
+      // Load new question from the question provider with current language
+      await questionProvider.generateQuestion(
+        language: languageProvider.currentLocale.languageCode
+      );
       
       setState(() {
         _currentQuestion = questionProvider.currentQuestion;
@@ -131,20 +144,53 @@ class _QuestionsViewState extends State<QuestionsView> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    
+    // Initialize feedback options with localized strings
+    _relevanceOptions = [
+      localizations.veryRelevant,
+      localizations.somewhatRelevant,
+      localizations.notRelevant
+    ];
+    
+    _comfortOptions = [
+      localizations.comfortable,
+      localizations.neutral,
+      localizations.uncomfortable
+    ];
+    
+    _enjoymentOptions = [
+      localizations.enjoyable,
+      localizations.neutral,
+      localizations.notEnjoyable
+    ];
+    
+    _depthOptions = [
+      localizations.tooDeep,
+      localizations.justRight,
+      localizations.tooShallow
+    ];
+    
+    _intimacyOptions = [
+      localizations.tooIntimate,
+      localizations.appropriate,
+      localizations.notIntimateEnough
+    ];
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Relationship Questions'),
+        title: Text(localizations.relationshipQuestions),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
-            tooltip: 'Manage Profiles',
+            tooltip: localizations.manageProfiles,
             onPressed: () {
               Navigator.pushNamed(context, '/profiles');
             },
           ),
           IconButton(
             icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
+            tooltip: localizations.settings,
             onPressed: () {
               Navigator.pushNamed(context, '/settings');
             },
@@ -169,7 +215,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                     )
                   : Text(
                       _error != null
-                        ? "Error loading question. Please try again."
+                        ? localizations.errorLoadingQuestion
                         : _currentQuestion,
                       style: const TextStyle(fontSize: 18),
                       textAlign: TextAlign.center,
@@ -187,7 +233,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         side: BorderSide(color: Colors.red),
                         backgroundColor: _lessLikeThis ? Colors.red.shade50 : Colors.transparent,
                       ),
-                      child: const Text("Less like this...", style: TextStyle(color: Colors.red)),
+                      child: Text(localizations.lessLikeThis, style: const TextStyle(color: Colors.red)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -198,7 +244,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         side: BorderSide(color: Colors.green),
                         backgroundColor: _moreLikeThis ? Colors.green.shade50 : Colors.transparent,
                       ),
-                      child: const Text("More like this...", style: TextStyle(color: Colors.green)),
+                      child: Text(localizations.moreLikeThis, style: const TextStyle(color: Colors.green)),
                     ),
                   ),
                 ],
@@ -209,7 +255,7 @@ class _QuestionsViewState extends State<QuestionsView> {
               // Star rating
               Column(
                 children: [
-                  const Text("Rate this question:"),
+                  Text(localizations.rateThisQuestion),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -240,7 +286,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                       children: [
                         // Relevance
                         _buildFeedbackCategory(
-                          "Relevance", 
+                          localizations.relevance, 
                           _relevanceOptions, 
                           _relevance, 
                           (value) {
@@ -253,7 +299,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         
                         // Comfort Level
                         _buildFeedbackCategory(
-                          "Comfort Level", 
+                          localizations.comfortLevel, 
                           _comfortOptions, 
                           _comfortLevel, 
                           (value) {
@@ -266,7 +312,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         
                         // Enjoyment
                         _buildFeedbackCategory(
-                          "Enjoyment", 
+                          localizations.enjoyment, 
                           _enjoymentOptions, 
                           _enjoyment, 
                           (value) {
@@ -279,7 +325,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         
                         // Depth Appropriateness
                         _buildFeedbackCategory(
-                          "Depth Appropriateness", 
+                          localizations.depthAppropriateness, 
                           _depthOptions, 
                           _depthAppropriateness, 
                           (value) {
@@ -292,7 +338,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         
                         // Intimacy Appropriateness
                         _buildFeedbackCategory(
-                          "Intimacy Appropriateness", 
+                          localizations.intimacyAppropriateness, 
                           _intimacyOptions, 
                           _intimacyAppropriateness, 
                           (value) {
@@ -314,7 +360,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                   child: ElevatedButton(
                     onPressed: _loadNewQuestion,
                     style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
-                    child: const Text("New question"),
+                    child: Text(localizations.newQuestion),
                   ),
                 ),
               ),
@@ -327,10 +373,17 @@ class _QuestionsViewState extends State<QuestionsView> {
   
   // Save current feedback to database
   void _saveCurrentFeedback() {
-    // Skip if this is the default question
-    if (_currentQuestion == widget.questionText) return;
-    
     final questionProvider = Provider.of<QuestionProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    
+    // Get the default question for the current language
+    final defaultQuestion = questionProvider.getDefaultQuestion(
+      languageProvider.currentLocale.languageCode
+    );
+    
+    // Skip if this is the default question
+    if (_currentQuestion == defaultQuestion) return;
+    
     questionProvider.saveQuestionToHistory(
       rating: _rating,
       moreLikeThis: _moreLikeThis,

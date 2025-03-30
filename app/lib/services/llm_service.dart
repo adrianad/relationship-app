@@ -220,7 +220,21 @@ class LLMService {
     String goalOfInteraction = 'Getting to know each other better',
     String thematicCategory = 'Past experiences',
     String questionHistory = '',
+    String language = 'en', // Default to English
   }) async {
+    // Map language code to full language name for the prompt
+    // IMPORTANT: Always use English language names in the prompt so the 
+    // LLM understands the instruction, but specify to generate in the target language
+    final Map<String, String> languageMap = {
+      'en': 'English',
+      'es': 'Spanish',
+      'fr': 'French',
+      'de': 'German',
+      // Add new languages here as needed
+    };
+    
+    String languageName = languageMap[language] ?? 'English';
+    
     // Construct the prompt with new template
     final prompt = '''
     Prompt Template for Generating Personalized Interaction Questions:
@@ -238,10 +252,14 @@ class LLMService {
     Goal of Interaction: $goalOfInteraction
 
     Thematic Category: $thematicCategory
+
+    Language: $languageName (Generate the question in $languageName)
     $questionHistory
 
-    Based on these inputs, generate a unique and engaging question tailored to the described scenario.
+    Based on these inputs, generate a unique and engaging question tailored to the described scenario IN $languageName.
     Return only the question with no additional text, formatting, or preamble.
+    IMPORTANT: The question MUST be in $languageName language.
+    DO NOT translate these input variables or categories; use them as conceptual guidelines.
     ''';
 
     try {
