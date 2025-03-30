@@ -4,14 +4,24 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app/models/question_record.dart';
 import 'package:app/models/profile.dart';
 import 'package:app/database/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class QuestionProvider extends ChangeNotifier {
   final LLMService _llmService = LLMService();
   final DatabaseHelper _db = DatabaseHelper.instance;
   
+  // Default questions for different languages
+  final Map<String, String> _defaultQuestions = {
+    'en': "How was your day today?",
+    'es': "¿Cómo ha sido tu día hoy?",
+    'fr': "Comment s'est passée ta journée aujourd'hui?",
+    'de': "Wie war dein Tag heute?",
+  };
+  
   String _currentQuestion = "How was your day today?";
   bool _isLoading = false;
   String _errorMessage = '';
+  String _currentLanguage = 'en';
   
   // Active profile reference - will be set by the app
   Profile? _activeProfile;
@@ -24,10 +34,37 @@ class QuestionProvider extends ChangeNotifier {
   final List<String> goalOptions = ['Getting to know each other better', 'Deepening intimacy', 'Breaking the ice', 'Stimulating thoughtful discussion', 'Provoking humor/playfulness', 'Exploring fantasies/desires'];
   final List<String> categoryOptions = ['Past experiences', 'Personal values/beliefs', 'Hypothetical scenarios', 'Dreams/goals/ambitions', 'Preferences', 'Relationships/intimacy', 'Secrets/confessions'];
   
+  // Constructor - initialize with current language
+  QuestionProvider() {
+    _initializeLanguage();
+  }
+  
+  // Initialize the provider with the system language or saved language
+  Future<void> _initializeLanguage() async {
+    try {
+      // Initialize with default question in current language
+      final prefs = await SharedPreferences.getInstance();
+      final savedLanguage = prefs.getString('app_language');
+      
+      if (savedLanguage != null) {
+        _currentLanguage = savedLanguage;
+        _currentQuestion = _defaultQuestions[savedLanguage] ?? _defaultQuestions['en']!;
+      }
+    } catch (e) {
+      print('Error initializing language: $e');
+    }
+  }
+  
   // Getters
   String get currentQuestion => _currentQuestion;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
+  String get currentLanguage => _currentLanguage;
+  
+  // Get default question for a specific language
+  String getDefaultQuestion(String languageCode) {
+    return _defaultQuestions[languageCode] ?? _defaultQuestions['en']!;
+  }
   
   // Forward profile getters
   String get depthOfRelationship => _activeProfile?.depthOfRelationship ?? 'Friends';
@@ -42,6 +79,27 @@ class QuestionProvider extends ChangeNotifier {
   void setActiveProfile(Profile profile) {
     _activeProfile = profile;
     notifyListeners();
+  }
+  
+  // Update the default question when language changes
+  Future<void> updateDefaultQuestion(String languageCode) async {
+    // Check if language is actually changing
+    if (_currentLanguage == languageCode && 
+        _currentQuestion == (_defaultQuestions[languageCode] ?? _defaultQuestions['en']!)) {
+      return; // No change needed
+    }
+    
+    // Update the language and question
+    _currentLanguage = languageCode;
+    _currentQuestion = _defaultQuestions[languageCode] ?? _defaultQuestions['en']!;
+    
+    // Notify listeners
+    notifyListeners();
+  }
+  
+  // Add a new language with its default question
+  void addLanguageDefaultQuestion(String languageCode, String defaultQuestion) {
+    _defaultQuestions[languageCode] = defaultQuestion;
   }
   
   // Initialize the LLM service with the selected provider
@@ -139,9 +197,17 @@ class QuestionProvider extends ChangeNotifier {
   }
   
   // Generate a new question
-  Future<void> generateQuestion() async {
+  Future<void> generateQuestion({String? language}) async {
     _isLoading = true;
     _errorMessage = '';
+    
+    // Use provided language code or current language
+    final languageCode = language ?? _currentLanguage;
+    // Update current language if provided
+    if (language != null) {
+      _currentLanguage = language;
+    }
+    
     notifyListeners();
     
     try {
@@ -172,6 +238,7 @@ class QuestionProvider extends ChangeNotifier {
         goalOfInteraction: goalStr,
         thematicCategory: categoryStr,
         questionHistory: questionHistory,
+        language: languageCode,
       );
       
       _currentQuestion = question;

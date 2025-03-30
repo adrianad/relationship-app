@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app/providers/profile_provider.dart';
 import 'package:app/models/profile.dart';
+import 'package:app/generated/app_localizations.dart';
 
 class ProfilesView extends StatefulWidget {
   const ProfilesView({super.key});
@@ -34,10 +35,11 @@ class _ProfilesViewState extends State<ProfilesView> {
   @override
   Widget build(BuildContext context) {
     final profileProvider = Provider.of<ProfileProvider>(context);
+    final localizations = AppLocalizations.of(context);
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conversation Profiles'),
+        title: Text(localizations.conversationProfiles),
       ),
       body: profileProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -58,7 +60,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                 // Profile list
                 Expanded(
                   child: profileProvider.profiles.isEmpty
-                      ? const Center(child: Text('No profiles yet. Create your first profile!'))
+                      ? Center(child: Text(localizations.noProfilesYet))
                       : ListView.builder(
                           itemCount: profileProvider.profiles.length,
                           itemBuilder: (context, index) {
@@ -84,7 +86,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                                     // Settings button
                                     IconButton(
                                       icon: const Icon(Icons.settings),
-                                      tooltip: 'Configure settings',
+                                      tooltip: localizations.configureSettings,
                                       onPressed: () {
                                         // Set this profile as active
                                         if (profile.id != profileProvider.activeProfile?.id) {
@@ -96,12 +98,12 @@ class _ProfilesViewState extends State<ProfilesView> {
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.edit),
-                                      tooltip: 'Edit profile',
+                                      tooltip: localizations.editProfile,
                                       onPressed: () => _showEditDialog(context, profile),
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete),
-                                      tooltip: 'Delete profile',
+                                      tooltip: localizations.deleteProfile,
                                       onPressed: profileProvider.profiles.length <= 1
                                           ? null  // Disable deletion of last profile
                                           : () => _showDeleteDialog(context, profile),
@@ -129,6 +131,7 @@ class _ProfilesViewState extends State<ProfilesView> {
 
   void _showAddDialog(BuildContext context) {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context);
     
     // Reset form fields
     _nameController.text = '';
@@ -144,7 +147,7 @@ class _ProfilesViewState extends State<ProfilesView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create New Profile'),
+        title: Text(localizations.createNewProfile),
         content: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -153,24 +156,24 @@ class _ProfilesViewState extends State<ProfilesView> {
               children: [
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Profile Name'),
+                  decoration: InputDecoration(labelText: localizations.profileName),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a name';
+                      return localizations.pleaseEnterName;
                     }
                     return null;
                   },
                 ),
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  decoration: InputDecoration(labelText: localizations.descriptionOptional),
                 ),
                 const SizedBox(height: 16),
                 
                 // Only show the basic settings for now to keep the dialog simple
                 DropdownButtonFormField<String>(
                   value: _selectedDepth,
-                  decoration: const InputDecoration(labelText: 'Depth of Relationship'),
+                  decoration: InputDecoration(labelText: localizations.depthOfRelationship),
                   items: ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers']
                       .map((option) => DropdownMenuItem(value: option, child: Text(option)))
                       .toList(),
@@ -183,7 +186,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                 
                 DropdownButtonFormField<String>(
                   value: _selectedProvider,
-                  decoration: const InputDecoration(labelText: 'LLM Provider'),
+                  decoration: InputDecoration(labelText: localizations.llmProvider),
                   items: ['OpenAI', 'Anthropic', 'Gemini']
                       .map((option) => DropdownMenuItem(value: option, child: Text(option)))
                       .toList(),
@@ -200,7 +203,7 @@ class _ProfilesViewState extends State<ProfilesView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -222,7 +225,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                 });
               }
             },
-            child: const Text('Create'),
+            child: Text(localizations.create),
           ),
         ],
       ),
@@ -231,6 +234,7 @@ class _ProfilesViewState extends State<ProfilesView> {
 
   void _showEditDialog(BuildContext context, Profile profile) {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context);
     
     // Initialize controllers with current values
     _nameController.text = profile.name;
@@ -246,7 +250,7 @@ class _ProfilesViewState extends State<ProfilesView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Profile'),
+        title: Text(localizations.editProfileTitle),
         content: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -255,24 +259,24 @@ class _ProfilesViewState extends State<ProfilesView> {
               children: [
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Profile Name'),
+                  decoration: InputDecoration(labelText: localizations.profileName),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a name';
+                      return localizations.pleaseEnterName;
                     }
                     return null;
                   },
                 ),
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  decoration: InputDecoration(labelText: localizations.descriptionOptional),
                 ),
                 const SizedBox(height: 16),
                 
                 // Basic settings for the edit dialog
                 DropdownButtonFormField<String>(
                   value: _selectedDepth,
-                  decoration: const InputDecoration(labelText: 'Depth of Relationship'),
+                  decoration: InputDecoration(labelText: localizations.depthOfRelationship),
                   items: ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers']
                       .map((option) => DropdownMenuItem(value: option, child: Text(option)))
                       .toList(),
@@ -285,7 +289,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                 
                 DropdownButtonFormField<String>(
                   value: _selectedProvider,
-                  decoration: const InputDecoration(labelText: 'LLM Provider'),
+                  decoration: InputDecoration(labelText: localizations.llmProvider),
                   items: ['OpenAI', 'Anthropic', 'Gemini']
                       .map((option) => DropdownMenuItem(value: option, child: Text(option)))
                       .toList(),
@@ -296,7 +300,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                   },
                 ),
                 
-                const Text('Note: Additional settings can be configured in the Settings screen.'),
+                Text(localizations.noteAdditionalSettings),
               ],
             ),
           ),
@@ -304,7 +308,7 @@ class _ProfilesViewState extends State<ProfilesView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -321,7 +325,7 @@ class _ProfilesViewState extends State<ProfilesView> {
                 });
               }
             },
-            child: const Text('Save'),
+            child: Text(localizations.save),
           ),
         ],
       ),
@@ -330,16 +334,17 @@ class _ProfilesViewState extends State<ProfilesView> {
 
   void _showDeleteDialog(BuildContext context, Profile profile) {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Profile'),
-        content: Text('Are you sure you want to delete "${profile.name}"? This action cannot be undone.'),
+        title: Text(localizations.deleteProfile),
+        content: Text(localizations.deleteProfileConfirmation(profile.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -348,7 +353,7 @@ class _ProfilesViewState extends State<ProfilesView> {
               });
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(localizations.deleteProfile),
           ),
         ],
       ),
