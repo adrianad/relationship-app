@@ -23,12 +23,17 @@ class QuestionProvider extends ChangeNotifier {
   String _errorMessage = '';
   String _currentLanguage = 'en';
   
+  // Track randomly selected options
+  String? _lastRandomMoodTone;
+  String? _lastRandomCategory;
+  String? _lastRandomGoal;
+  
   // Active profile reference - will be set by the app
   Profile? _activeProfile;
   
   // Options for dropdowns and multi-selects
   final List<String> depthOptions = ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers'];
-  final List<String> moodOptions = ['Funny/Playful', 'Serious/Thoughtful', 'Deep/Reflective', 'Sensual/Intimate', 'Crazy/Absurd', 'Provocative/Dirty'];
+  final List<String> moodOptions = ['Neutral/Balanced', 'Funny/Playful', 'Serious/Thoughtful', 'Deep/Reflective', 'Sensual/Intimate', 'Crazy/Absurd', 'Provocative/Dirty'];
   final List<String> contextOptions = ['Casual hangout', 'Date night', 'Online chat', 'Party setting', 'Private/intimate setting', 'Road trip', 'Dinner conversation'];
   final List<String> comfortOptions = ['Safe (low risk)', 'Moderate', 'High Risk'];
   final List<String> goalOptions = ['Getting to know each other better', 'Deepening intimacy', 'Breaking the ice', 'Stimulating thoughtful discussion', 'Provoking humor/playfulness', 'Exploring fantasies/desires'];
@@ -60,6 +65,11 @@ class QuestionProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   String get currentLanguage => _currentLanguage;
+  
+  // Getters for last randomly selected options
+  String? get lastRandomMoodTone => _lastRandomMoodTone;
+  String? get lastRandomCategory => _lastRandomCategory;
+  String? get lastRandomGoal => _lastRandomGoal;
   
   // Get default question for a specific language
   String getDefaultQuestion(String languageCode) {
@@ -264,23 +274,35 @@ class QuestionProvider extends ChangeNotifier {
       String goalStr;
       String categoryStr;
       
-      // Handle "Anything" options
+      // Handle "Random" options - pick a random option for each
       if (anyMoodTone) {
-        moodToneStr = "Any mood/tone at your discretion";
+        // Choose a random mood tone from options
+        final randomMood = moodOptions[DateTime.now().microsecond % moodOptions.length];
+        moodToneStr = randomMood;
+        _lastRandomMoodTone = randomMood; // Store the randomly selected mood
       } else {
         moodToneStr = moodToneToUse.join(' | ');
+        _lastRandomMoodTone = null; // Clear the random selection when not using random
       }
       
       if (anyCategory) {
-        categoryStr = "Any thematic category at your discretion";
+        // Choose a random category from options
+        final randomCategory = categoryOptions[DateTime.now().millisecond % categoryOptions.length];
+        categoryStr = randomCategory;
+        _lastRandomCategory = randomCategory; // Store the randomly selected category
       } else {
         categoryStr = categoryToUse.join(' | ');
+        _lastRandomCategory = null; // Clear the random selection when not using random
       }
       
       if (anyGoal) {
-        goalStr = "Any goal of interaction at your discretion";
+        // Choose a random goal from options
+        final randomGoal = goalOptions[DateTime.now().second % goalOptions.length];
+        goalStr = randomGoal;
+        _lastRandomGoal = randomGoal; // Store the randomly selected goal
       } else {
         goalStr = goalToUse.join(' | ');
+        _lastRandomGoal = null; // Clear the random selection when not using random
       }
       
       final question = await _llmService.generateRelationshipQuestion(
@@ -311,6 +333,7 @@ class QuestionProvider extends ChangeNotifier {
       language: language,
       presetMoodTone: 'Funny/Playful',
       presetCategory: 'Hypothetical scenarios',
+      presetGoal: 'Provoking humor/playfulness',
       // Don't modify context or comfort level
       keepCurrentSettings: false
     );
@@ -322,6 +345,7 @@ class QuestionProvider extends ChangeNotifier {
       language: language,
       presetMoodTone: 'Deep/Reflective',
       presetCategory: 'Personal values/beliefs',
+      presetGoal: 'Stimulating thoughtful discussion',
       // Don't modify context or comfort level
       keepCurrentSettings: false
     );
@@ -333,6 +357,7 @@ class QuestionProvider extends ChangeNotifier {
       language: language,
       presetMoodTone: 'Funny/Playful',
       presetCategory: 'Preferences',
+      presetGoal: 'Breaking the ice',
       // Don't modify context or comfort level
       keepCurrentSettings: false
     );
