@@ -197,7 +197,17 @@ class QuestionProvider extends ChangeNotifier {
   }
   
   // Generate a new question
-  Future<void> generateQuestion({String? language}) async {
+  Future<void> generateQuestion({
+    String? language,
+    String? presetMoodTone,
+    String? presetCategory,
+    String? presetComfortLevel,
+    String? presetGoal,
+    bool keepCurrentSettings = false,
+    bool anyMoodTone = false,
+    bool anyCategory = false,
+    bool anyGoal = false
+  }) async {
     _isLoading = true;
     _errorMessage = '';
     
@@ -225,16 +235,58 @@ class QuestionProvider extends ChangeNotifier {
       // Get formatted question history for the prompt
       final questionHistory = await _db.getFormattedHistory(_activeProfile!.id!);
       
-      // Concatenate multi-select values for the prompt
-      final moodToneStr = _activeProfile!.moodTone.join(' | ');
-      final goalStr = _activeProfile!.goalOfInteraction.join(' | ');
-      final categoryStr = _activeProfile!.thematicCategory.join(' | ');
+      // Use preset values or current profile settings
+      String depthToUse = _activeProfile!.depthOfRelationship;
+      List<String> moodToneToUse = List.from(_activeProfile!.moodTone);
+      String contextToUse = _activeProfile!.context;
+      String comfortLevelToUse = presetComfortLevel ?? _activeProfile!.comfortLevel;
+      List<String> goalToUse = List.from(_activeProfile!.goalOfInteraction);
+      List<String> categoryToUse = List.from(_activeProfile!.thematicCategory);
+      
+      // Override settings with presets if provided and not keeping current settings
+      if (!keepCurrentSettings) {
+        if (presetMoodTone != null) {
+          moodToneToUse = [presetMoodTone];
+        }
+        
+        if (presetCategory != null) {
+          categoryToUse = [presetCategory];
+        }
+        
+        if (presetGoal != null) {
+          goalToUse = [presetGoal];
+        }
+      }
+      
+      // Prepare the strings for the prompt
+      String moodToneStr;
+      String goalStr;
+      String categoryStr;
+      
+      // Handle "Anything" options
+      if (anyMoodTone) {
+        moodToneStr = "Any mood/tone at your discretion";
+      } else {
+        moodToneStr = moodToneToUse.join(' | ');
+      }
+      
+      if (anyCategory) {
+        categoryStr = "Any thematic category at your discretion";
+      } else {
+        categoryStr = categoryToUse.join(' | ');
+      }
+      
+      if (anyGoal) {
+        goalStr = "Any goal of interaction at your discretion";
+      } else {
+        goalStr = goalToUse.join(' | ');
+      }
       
       final question = await _llmService.generateRelationshipQuestion(
-        depthOfRelationship: _activeProfile!.depthOfRelationship,
+        depthOfRelationship: depthToUse,
         moodTone: moodToneStr,
-        context: _activeProfile!.context,
-        comfortLevel: _activeProfile!.comfortLevel,
+        context: contextToUse,
+        comfortLevel: comfortLevelToUse,
         goalOfInteraction: goalStr,
         thematicCategory: categoryStr,
         questionHistory: questionHistory,
@@ -251,16 +303,75 @@ class QuestionProvider extends ChangeNotifier {
     }
   }
   
+  // Convenience presets for quick question generation
+  Future<void> generateFunnyQuestion({String? language}) async {
+    return generateQuestion(
+      language: language,
+      presetMoodTone: 'Funny/Playful',
+      presetCategory: 'Hypothetical scenarios'
+    );
+  }
+  
+  Future<void> generateDeepQuestion({String? language}) async {
+    return generateQuestion(
+      language: language,
+      presetMoodTone: 'Deep/Reflective',
+      presetCategory: 'Personal values/beliefs',
+      presetComfortLevel: 'Moderate'
+    );
+  }
+  
+  Future<void> generateIcebreakerQuestion({String? language}) async {
+    return generateQuestion(
+      language: language,
+      presetMoodTone: 'Funny/Playful',
+      presetCategory: 'Preferences',
+      presetComfortLevel: 'Safe (low risk)'
+    );
+  }
+  
+  Future<void> regenerateWithSameSettings({String? language}) async {
+    return generateQuestion(
+      language: language,
+      keepCurrentSettings: true
+    );
+  }
+  
+  Future<void> generateRandomQuestion({String? language}) async {
+    // Generate random settings
+    final random = DateTime.now().millisecondsSinceEpoch;
+    
+    // Pick a random depth
+    final randomDepth = depthOptions[random % depthOptions.length];
+    
+    // Pick a random context
+    final randomContext = contextOptions[(random ~/ 3) % contextOptions.length];
+    
+    // Pick a random comfort level
+    final randomComfort = comfortOptions[(random ~/ 5) % comfortOptions.length];
+    
+    // Update settings with random values
+    await updateSettings(
+      depthOfRelationship: randomDepth,
+      context: randomContext,
+      comfortLevel: randomComfort,
+    );
+    
+    // Generate question with the random settings
+    return generateQuestion(
+      language: language,
+      anyMoodTone: true,
+      anyCategory: true,
+      anyGoal: true,
+      keepCurrentSettings: true
+    );
+  }
+  
   // Save question with feedback to database
   Future<void> saveQuestionToHistory({
     required int rating,
     required bool moreLikeThis,
     required bool lessLikeThis,
-    String? relevance,
-    String? comfortLevel,
-    String? enjoyment,
-    String? depthAppropriateness,
-    String? intimacyAppropriateness,
   }) async {
     try {
       if (_activeProfile == null) {
@@ -274,11 +385,6 @@ class QuestionProvider extends ChangeNotifier {
         rating: rating,
         moreLikeThis: moreLikeThis,
         lessLikeThis: lessLikeThis,
-        relevance: relevance,
-        comfortLevel: comfortLevel,
-        enjoyment: enjoyment,
-        depthAppropriateness: depthAppropriateness,
-        intimacyAppropriateness: intimacyAppropriateness,
         // Settings used to generate this question
         depthOfRelationship: _activeProfile!.depthOfRelationship,
         moodTone: _activeProfile!.moodTone.join(', '),

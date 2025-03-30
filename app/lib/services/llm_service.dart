@@ -223,7 +223,7 @@ class LLMService {
     String language = 'en', // Default to English
   }) async {
     // Map language code to full language name for the prompt
-    // IMPORTANT: Always use English language names in the prompt so the 
+    // IMPORTANT: Always use English language names in the prompt so the
     // LLM understands the instruction, but specify to generate in the target language
     final Map<String, String> languageMap = {
       'en': 'English',
@@ -232,34 +232,35 @@ class LLMService {
       'de': 'German',
       // Add new languages here as needed
     };
-    
-    String languageName = languageMap[language] ?? 'English';
-    
-    // Construct the prompt with new template
-    final prompt = '''
-    Prompt Template for Generating Personalized Interaction Questions:
 
-    Create a thoughtful, engaging question optimized for a conversation between two people based on the following variables:
+    String languageName = languageMap[language] ?? 'English';
+
+    // Construct the improved prompt template with optimized user feedback
+    final prompt = '''
+    Create a conversation-starting question for two people based on these parameters:
 
     Depth of Relationship: $depthOfRelationship
-
     Mood/Tone: $moodTone
-
     Context: $context
-
     Comfort Level: $comfortLevel
-
     Goal of Interaction: $goalOfInteraction
-
-    Thematic Category: $thematicCategory
-
-    Language: $languageName (Generate the question in $languageName)
+    Thematic Category: $thematicCategory  (Choose ONE specific aspect from this category to focus on)
+    Language: $languageName
+    
     $questionHistory
 
-    Based on these inputs, generate a unique and engaging question tailored to the described scenario IN $languageName.
-    Return only the question with no additional text, formatting, or preamble.
-    IMPORTANT: The question MUST be in $languageName language.
-    DO NOT translate these input variables or categories; use them as conceptual guidelines.
+    IMPORTANT GUIDELINES:
+    1. Generate ONE unique, specific, and memorable question in $languageName
+    2. Make the question personal, emotionally resonant, and slightly unexpected
+    3. Avoid generic conversation starters or clichés - be specific and thought-provoking
+    4. Focus on depth and meaningful connection rather than surface-level small talk
+    5. Craft a question that feels natural and conversational in $languageName
+    6. Return ONLY the question with no additional text, formatting, or preamble
+    7. IMPORTANT: Focus on a SINGLE thematic aspect rather than trying to cover multiple categories
+    8. The question should make people think, reflect, and want to share something meaningful
+    9. Pay attention to highly-rated questions in the history and learn from what users liked
+
+    YOUR RESPONSE MUST ONLY CONTAIN THE QUESTION IN $languageName LANGUAGE, NOTHING ELSE.
     ''';
 
     try {

@@ -197,16 +197,45 @@ class DatabaseHelper {
     return await db.delete('questions', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Formatting history for prompts
-  Future<String> getFormattedHistory(int profileId, {int maxRecords = 100}) async {
-    final questions = await getQuestionsForProfile(profileId, limit: maxRecords);
+  // Formatting history for prompts - optimized version
+  Future<String> getFormattedHistory(int profileId, {int maxRecords = 10}) async {
+    final allQuestions = await getQuestionsForProfile(profileId, limit: maxRecords * 3);
 
-    if (questions.isEmpty) {
+    if (allQuestions.isEmpty) {
       return '';
     }
 
-    // Build the formatted history string
-    String historyText = '\n**Avoid repeating previously asked questions** listed below (with provided feedback):\n\n';
+    // Sort questions by rating to prioritize high-rated and low-rated for better learning
+    final sortedQuestions = [...allQuestions];
+    sortedQuestions.sort((a, b) {
+      // First prioritize questions with like/dislike feedback
+      final aHasFeedback = a.moreLikeThis || a.lessLikeThis;
+      final bHasFeedback = b.moreLikeThis || b.lessLikeThis;
+      
+      if (aHasFeedback && !bHasFeedback) return -1;
+      if (!aHasFeedback && bHasFeedback) return 1;
+      
+      // Then sort by rating (highest first, then lowest)
+      if (a.rating >= 4 && b.rating < 4) return -1;
+      if (a.rating < 4 && b.rating >= 4) return 1;
+      if (a.rating <= 1 && b.rating > 1) return -1; 
+      if (a.rating > 1 && b.rating <= 1) return 1;
+      
+      // Then sort by recency
+      return b.timestamp.compareTo(a.timestamp);
+    });
+    
+    // Take the most relevant questions for the model, limited by maxRecords
+    final questions = sortedQuestions.take(maxRecords).toList();
+
+    // Build the formatted history string with a helpful introduction
+    String historyText = '''
+
+QUESTION HISTORY (learn from this feedback):
+**Avoid repeating previously asked questions** listed below.
+Focus on characteristics of highly-rated questions and avoid characteristics of poorly-rated ones.
+
+''';
 
     for (int i = 0; i < questions.length; i++) {
       historyText += questions[i].toPromptEntry(i + 1);
