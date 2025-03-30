@@ -203,6 +203,7 @@ class QuestionProvider extends ChangeNotifier {
     String? presetCategory,
     String? presetComfortLevel,
     String? presetGoal,
+    String? presetDepth,
     bool keepCurrentSettings = false,
     bool anyMoodTone = false,
     bool anyCategory = false,
@@ -236,24 +237,24 @@ class QuestionProvider extends ChangeNotifier {
       final questionHistory = await _db.getFormattedHistory(_activeProfile!.id!);
       
       // Use preset values or current profile settings
-      String depthToUse = _activeProfile!.depthOfRelationship;
+      String depthToUse = presetDepth ?? _activeProfile!.depthOfRelationship;
       List<String> moodToneToUse = List.from(_activeProfile!.moodTone);
       String contextToUse = _activeProfile!.context;
       String comfortLevelToUse = presetComfortLevel ?? _activeProfile!.comfortLevel;
       List<String> goalToUse = List.from(_activeProfile!.goalOfInteraction);
       List<String> categoryToUse = List.from(_activeProfile!.thematicCategory);
       
-      // Override settings with presets if provided and not keeping current settings
+      // Only override settings if not keeping current settings and not using "anything" options
       if (!keepCurrentSettings) {
-        if (presetMoodTone != null) {
+        if (presetMoodTone != null && !anyMoodTone) {
           moodToneToUse = [presetMoodTone];
         }
         
-        if (presetCategory != null) {
+        if (presetCategory != null && !anyCategory) {
           categoryToUse = [presetCategory];
         }
         
-        if (presetGoal != null) {
+        if (presetGoal != null && !anyGoal) {
           goalToUse = [presetGoal];
         }
       }
@@ -305,28 +306,35 @@ class QuestionProvider extends ChangeNotifier {
   
   // Convenience presets for quick question generation
   Future<void> generateFunnyQuestion({String? language}) async {
+    // Don't update settings, just generate a question with these parameters
     return generateQuestion(
       language: language,
       presetMoodTone: 'Funny/Playful',
-      presetCategory: 'Hypothetical scenarios'
+      presetCategory: 'Hypothetical scenarios',
+      // Don't modify context or comfort level
+      keepCurrentSettings: false
     );
   }
   
   Future<void> generateDeepQuestion({String? language}) async {
+    // Don't update settings, just generate a question with these parameters
     return generateQuestion(
       language: language,
       presetMoodTone: 'Deep/Reflective',
       presetCategory: 'Personal values/beliefs',
-      presetComfortLevel: 'Moderate'
+      // Don't modify context or comfort level
+      keepCurrentSettings: false
     );
   }
   
   Future<void> generateIcebreakerQuestion({String? language}) async {
+    // Don't update settings, just generate a question with these parameters
     return generateQuestion(
       language: language,
       presetMoodTone: 'Funny/Playful',
       presetCategory: 'Preferences',
-      presetComfortLevel: 'Safe (low risk)'
+      // Don't modify context or comfort level
+      keepCurrentSettings: false
     );
   }
   
@@ -338,32 +346,18 @@ class QuestionProvider extends ChangeNotifier {
   }
   
   Future<void> generateRandomQuestion({String? language}) async {
-    // Generate random settings
-    final random = DateTime.now().millisecondsSinceEpoch;
-    
-    // Pick a random depth
-    final randomDepth = depthOptions[random % depthOptions.length];
-    
-    // Pick a random context
-    final randomContext = contextOptions[(random ~/ 3) % contextOptions.length];
-    
-    // Pick a random comfort level
-    final randomComfort = comfortOptions[(random ~/ 5) % comfortOptions.length];
-    
-    // Update settings with random values
-    await updateSettings(
-      depthOfRelationship: randomDepth,
-      context: randomContext,
-      comfortLevel: randomComfort,
-    );
-    
-    // Generate question with the random settings
+    // Generate question with random parameters but don't update saved settings
     return generateQuestion(
       language: language,
-      anyMoodTone: true,
-      anyCategory: true,
-      anyGoal: true,
-      keepCurrentSettings: true
+      anyMoodTone: true, // Use "Anything" for mood tone
+      anyCategory: true, // Use "Anything" for category
+      anyGoal: true,     // Use "Anything" for goal
+      keepCurrentSettings: false,
+      // No preset values - context, comfort level, and depth preserved by generateQuestion
+      presetMoodTone: null,
+      presetCategory: null,
+      presetGoal: null,
+      presetDepth: null  // Don't change depth
     );
   }
   

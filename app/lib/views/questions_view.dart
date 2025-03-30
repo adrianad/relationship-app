@@ -36,6 +36,12 @@ class _QuestionsViewState extends State<QuestionsView> {
   bool _anyMoodTone = false;
   bool _anyCategory = false;
   bool _anyGoal = false;
+  
+  // Temporary settings for display only (used by presets)
+  String _tempMoodTone = '';
+  String _tempCategory = '';
+  String _tempDepth = '';
+  bool _showingTempSettings = false;
 
   @override
   void initState() {
@@ -94,6 +100,8 @@ class _QuestionsViewState extends State<QuestionsView> {
     
     setState(() {
       _isLoading = true;
+      // Clear any temporary settings when generating a question with real settings
+      _showingTempSettings = false;
     });
     
     try {
@@ -201,8 +209,10 @@ class _QuestionsViewState extends State<QuestionsView> {
         _rating = 3;
         _moreLikeThis = false;
         _lessLikeThis = false;
-        _currentMoodTone = 'Funny/Playful';
-        _currentCategory = 'Hypothetical scenarios';
+        // Just show temporary parameters in UI, don't actually modify settings
+        _tempMoodTone = 'Funny/Playful';
+        _tempCategory = 'Hypothetical scenarios';
+        _showingTempSettings = true;
         _isLoading = false;
         _error = null;
       });
@@ -236,9 +246,10 @@ class _QuestionsViewState extends State<QuestionsView> {
         _rating = 3;
         _moreLikeThis = false;
         _lessLikeThis = false;
-        _currentMoodTone = 'Deep/Reflective';
-        _currentCategory = 'Personal values/beliefs';
-        _currentComfortLevel = 'Moderate';
+        // Just show temporary parameters in UI, don't actually modify settings
+        _tempMoodTone = 'Deep/Reflective';
+        _tempCategory = 'Personal values/beliefs';
+        _showingTempSettings = true;
         _isLoading = false;
         _error = null;
       });
@@ -272,9 +283,10 @@ class _QuestionsViewState extends State<QuestionsView> {
         _rating = 3;
         _moreLikeThis = false;
         _lessLikeThis = false;
-        _currentMoodTone = 'Funny/Playful';
-        _currentCategory = 'Preferences';
-        _currentComfortLevel = 'Safe (low risk)';
+        // Just show temporary parameters in UI, don't actually modify settings
+        _tempMoodTone = 'Funny/Playful';
+        _tempCategory = 'Preferences';
+        _showingTempSettings = true;
         _isLoading = false;
         _error = null;
       });
@@ -296,11 +308,6 @@ class _QuestionsViewState extends State<QuestionsView> {
     
     setState(() {
       _isLoading = true;
-      
-      // Use the "Anything" options for all fields
-      _anyMoodTone = true;
-      _anyCategory = true;
-      _anyGoal = true;
     });
     
     try {
@@ -315,7 +322,12 @@ class _QuestionsViewState extends State<QuestionsView> {
         _rating = 3;
         _moreLikeThis = false;
         _lessLikeThis = false;
-        _currentComfortLevel = questionProvider.comfortLevel;
+        
+        // Just show temporary parameters in UI, don't actually modify settings
+        _tempMoodTone = 'Anything';
+        _tempCategory = 'Anything';
+        _tempDepth = '';  // Don't show any depth change
+        _showingTempSettings = true;
         
         _isLoading = false;
         _error = null;
@@ -438,7 +450,36 @@ class _QuestionsViewState extends State<QuestionsView> {
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         
-                        // No need for preset buttons here - moved below the question
+                        // Quick settings for comfort level at the top
+                        Row(
+                          children: [
+                            Text(localizations.comfortLevel, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: SegmentedButton<String>(
+                                segments: questionProvider.comfortOptions
+                                    .map((option) => ButtonSegment<String>(
+                                          value: option,
+                                          label: Text(getLocalizedOption(context, option), style: const TextStyle(fontSize: 10)),
+                                        ))
+                                    .toList(),
+                                selected: {_currentComfortLevel},
+                                onSelectionChanged: (Set<String> selection) async {
+                                  final selectedLevel = selection.first;
+                                  await questionProvider.updateSettings(
+                                    comfortLevel: selectedLevel,
+                                  );
+                                  setState(() {
+                                    _currentComfortLevel = selectedLevel;
+                                  });
+                                },
+                                style: const ButtonStyle(
+                                  visualDensity: VisualDensity(horizontal: -4, vertical: -4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         
                         const SizedBox(height: 12),
                         const Divider(),
@@ -533,62 +574,6 @@ class _QuestionsViewState extends State<QuestionsView> {
                         
                         const SizedBox(height: 8),
                         
-                        // Quick settings for context
-                        Text(localizations.context, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 6),
-                        DropdownButtonFormField<String>(
-                          value: questionProvider.context,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            isDense: true,
-                          ),
-                          items: questionProvider.contextOptions
-                              .map((option) => DropdownMenuItem(
-                                    value: option,
-                                    child: Text(getLocalizedOption(context, option), style: const TextStyle(fontSize: 14)),
-                                  ))
-                              .toList(),
-                          onChanged: (value) async {
-                            if (value != null) {
-                              await questionProvider.updateSettings(context: value);
-                            }
-                          },
-                        ),
-                        
-                        const SizedBox(height: 8),
-                        
-                        // Quick settings for comfort level
-                        Row(
-                          children: [
-                            Text(localizations.comfortLevel, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: SegmentedButton<String>(
-                                segments: questionProvider.comfortOptions
-                                    .map((option) => ButtonSegment<String>(
-                                          value: option,
-                                          label: Text(getLocalizedOption(context, option), style: const TextStyle(fontSize: 10)),
-                                        ))
-                                    .toList(),
-                                selected: {_currentComfortLevel},
-                                onSelectionChanged: (Set<String> selection) async {
-                                  final selectedLevel = selection.first;
-                                  await questionProvider.updateSettings(
-                                    comfortLevel: selectedLevel,
-                                  );
-                                  setState(() {
-                                    _currentComfortLevel = selectedLevel;
-                                  });
-                                },
-                                style: const ButtonStyle(
-                                  visualDensity: VisualDensity(horizontal: -4, vertical: -4),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
                         const SizedBox(height: 8),
                         
                         // Quick settings for goal of interaction
@@ -640,42 +625,96 @@ class _QuestionsViewState extends State<QuestionsView> {
                 
               const SizedBox(height: 12),
               
+              // Context dropdown outside the settings panel
+              Row(
+                children: [
+                  const Icon(Icons.place, size: 18),
+                  const SizedBox(width: 8),
+                  Text(localizations.context, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: questionProvider.context,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        isDense: true,
+                      ),
+                      items: questionProvider.contextOptions
+                          .map((option) => DropdownMenuItem(
+                                value: option,
+                                child: Text(getLocalizedOption(context, option), style: const TextStyle(fontSize: 14)),
+                              ))
+                          .toList(),
+                      onChanged: (value) async {
+                        if (value != null) {
+                          await questionProvider.updateSettings(context: value);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+              
               // Parameter chips above the question
               Wrap(
                 spacing: 6,
                 children: [
-                  Chip(
-                    label: Text(_anyMoodTone ? 'Anything' : getLocalizedOption(context, _currentMoodTone)),
-                    avatar: const Icon(Icons.mood, size: 16),
-                    visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-                    labelStyle: const TextStyle(fontSize: 12),
-                    backgroundColor: _anyMoodTone ? Colors.purple.withOpacity(0.2) : null,
-                  ),
-                  Chip(
-                    label: Text(_anyCategory ? 'Anything' : getLocalizedOption(context, _currentCategory)),
-                    avatar: const Icon(Icons.category, size: 16),
-                    visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-                    labelStyle: const TextStyle(fontSize: 12),
-                    backgroundColor: _anyCategory ? Colors.purple.withOpacity(0.2) : null,
-                  ),
+                  // If showing temporary settings from presets, show those instead
+                  if (_showingTempSettings) ...[  
+                    if (_tempMoodTone.isNotEmpty) Chip(
+                      label: Text(_tempMoodTone == 'Anything' ? 'Anything' : getLocalizedOption(context, _tempMoodTone)),
+                      avatar: const Icon(Icons.mood, size: 16),
+                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      backgroundColor: _tempMoodTone == 'Anything' ? Colors.purple.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                    ),
+                    if (_tempCategory.isNotEmpty) Chip(
+                      label: Text(_tempCategory == 'Anything' ? 'Anything' : getLocalizedOption(context, _tempCategory)),
+                      avatar: const Icon(Icons.category, size: 16),
+                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      backgroundColor: _tempCategory == 'Anything' ? Colors.purple.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                    ),
+                    if (_tempDepth.isNotEmpty) Chip(
+                      label: Text(getLocalizedOption(context, _tempDepth)),
+                      avatar: const Icon(Icons.people, size: 16),
+                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      backgroundColor: Colors.orange.withOpacity(0.2),
+                    ),
+                  ] else ...[  
+                    // Otherwise show the actual settings
+                    Chip(
+                      label: Text(_anyMoodTone ? 'Anything' : getLocalizedOption(context, _currentMoodTone)),
+                      avatar: const Icon(Icons.mood, size: 16),
+                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      backgroundColor: _anyMoodTone ? Colors.purple.withOpacity(0.2) : null,
+                    ),
+                    Chip(
+                      label: Text(_anyCategory ? 'Anything' : getLocalizedOption(context, _currentCategory)),
+                      avatar: const Icon(Icons.category, size: 16),
+                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      backgroundColor: _anyCategory ? Colors.purple.withOpacity(0.2) : null,
+                    ),
+                    Chip(
+                      label: Text(_anyGoal ? 'Anything' : getLocalizedOption(context, _currentGoal)),
+                      avatar: const Icon(Icons.flag, size: 16),
+                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      backgroundColor: _anyGoal ? Colors.purple.withOpacity(0.2) : null,
+                    ),
+                  ],
+                  // Always show the comfort level chip
                   Chip(
                     label: Text(getLocalizedOption(context, _currentComfortLevel)),
                     avatar: const Icon(Icons.safety_divider, size: 16),
                     visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
                     labelStyle: const TextStyle(fontSize: 12),
-                  ),
-                  Chip(
-                    label: Text(getLocalizedOption(context, questionProvider.context)),
-                    avatar: const Icon(Icons.place, size: 16),
-                    visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-                    labelStyle: const TextStyle(fontSize: 12),
-                  ),
-                  Chip(
-                    label: Text(_anyGoal ? 'Anything' : getLocalizedOption(context, _currentGoal)),
-                    avatar: const Icon(Icons.flag, size: 16),
-                    visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-                    labelStyle: const TextStyle(fontSize: 12),
-                    backgroundColor: _anyGoal ? Colors.purple.withOpacity(0.2) : null,
                   ),
                 ],
               ),
@@ -829,7 +868,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                         label: const Text('New Question'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: Colors.blue,
+                          backgroundColor: Colors.grey.shade800,
                           foregroundColor: Colors.white,
                         ),
                       ),
