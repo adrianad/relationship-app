@@ -23,10 +23,10 @@ class QuestionProvider extends ChangeNotifier {
   String _errorMessage = '';
   String _currentLanguage = 'en';
   
-  // Track randomly selected options
-  String? _lastRandomMoodTone;
-  String? _lastRandomCategory;
-  String? _lastRandomGoal;
+  // Temporary memory for random selections (not persisted to profile)
+  String? _tempRandomMoodTone;
+  String? _tempRandomCategory;
+  String? _tempRandomGoal;
   
   // Active profile reference - will be set by the app
   Profile? _activeProfile;
@@ -66,10 +66,15 @@ class QuestionProvider extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   String get currentLanguage => _currentLanguage;
   
-  // Getters for last randomly selected options
-  String? get lastRandomMoodTone => _lastRandomMoodTone;
-  String? get lastRandomCategory => _lastRandomCategory;
-  String? get lastRandomGoal => _lastRandomGoal;
+  // Getters for last randomly selected options from the active profile or temporary memory
+  String? get lastRandomMoodTone => _tempRandomMoodTone ?? _activeProfile?.lastRandomMoodTone;
+  String? get lastRandomCategory => _tempRandomCategory ?? _activeProfile?.lastRandomCategory;
+  String? get lastRandomGoal => _tempRandomGoal ?? _activeProfile?.lastRandomGoal;
+  
+  // Getters for random selection settings
+  bool get anyMoodTone => _activeProfile?.anyMoodTone ?? false;
+  bool get anyCategory => _activeProfile?.anyCategory ?? false;
+  bool get anyGoal => _activeProfile?.anyGoal ?? false;
   
   // Get default question for a specific language
   String getDefaultQuestion(String languageCode) {
@@ -182,6 +187,12 @@ class QuestionProvider extends ChangeNotifier {
     String? comfortLevel,
     List<String>? goalOfInteraction,
     List<String>? thematicCategory,
+    bool? anyMoodTone,
+    bool? anyCategory,
+    bool? anyGoal,
+    String? lastRandomMoodTone,
+    String? lastRandomCategory,
+    String? lastRandomGoal,
   }) async {
     try {
       if (_activeProfile == null) {
@@ -195,6 +206,12 @@ class QuestionProvider extends ChangeNotifier {
         comfortLevel: comfortLevel,
         goalOfInteraction: goalOfInteraction,
         thematicCategory: thematicCategory,
+        anyMoodTone: anyMoodTone,
+        anyCategory: anyCategory,
+        anyGoal: anyGoal,
+        lastRandomMoodTone: lastRandomMoodTone,
+        lastRandomCategory: lastRandomCategory,
+        lastRandomGoal: lastRandomGoal,
       );
       
       await _db.updateProfile(updatedProfile);
@@ -217,7 +234,8 @@ class QuestionProvider extends ChangeNotifier {
     bool keepCurrentSettings = false,
     bool anyMoodTone = false,
     bool anyCategory = false,
-    bool anyGoal = false
+    bool anyGoal = false,
+    bool temporaryRandom = false // Flag to indicate if random is just temporary
   }) async {
     _isLoading = true;
     _errorMessage = '';
@@ -275,34 +293,68 @@ class QuestionProvider extends ChangeNotifier {
       String categoryStr;
       
       // Handle "Random" options - pick a random option for each
-      if (anyMoodTone) {
+      String? newRandomMoodTone;
+      String? newRandomCategory;
+      String? newRandomGoal;
+      
+      if (anyMoodTone || moodToneToUse.contains('Random')) {
         // Choose a random mood tone from options
         final randomMood = moodOptions[DateTime.now().microsecond % moodOptions.length];
         moodToneStr = randomMood;
-        _lastRandomMoodTone = randomMood; // Store the randomly selected mood
+        newRandomMoodTone = randomMood; // Store the randomly selected mood
       } else {
         moodToneStr = moodToneToUse.join(' | ');
-        _lastRandomMoodTone = null; // Clear the random selection when not using random
+        newRandomMoodTone = null; // Clear the random selection when not using random
       }
       
-      if (anyCategory) {
+      if (anyCategory || categoryToUse.contains('Random')) {
         // Choose a random category from options
         final randomCategory = categoryOptions[DateTime.now().millisecond % categoryOptions.length];
         categoryStr = randomCategory;
-        _lastRandomCategory = randomCategory; // Store the randomly selected category
+        newRandomCategory = randomCategory; // Store the randomly selected category
       } else {
         categoryStr = categoryToUse.join(' | ');
-        _lastRandomCategory = null; // Clear the random selection when not using random
+        newRandomCategory = null; // Clear the random selection when not using random
       }
       
-      if (anyGoal) {
+      if (anyGoal || goalToUse.contains('Random')) {
         // Choose a random goal from options
         final randomGoal = goalOptions[DateTime.now().second % goalOptions.length];
         goalStr = randomGoal;
-        _lastRandomGoal = randomGoal; // Store the randomly selected goal
+        newRandomGoal = randomGoal; // Store the randomly selected goal
       } else {
         goalStr = goalToUse.join(' | ');
-        _lastRandomGoal = null; // Clear the random selection when not using random
+        newRandomGoal = null; // Clear the random selection when not using random
+      }
+      
+      // Update the profile with the new random selections if not temporary
+      if (_activeProfile != null && !temporaryRandom) {
+        // Only update if the values actually changed
+        if (newRandomMoodTone != _activeProfile!.lastRandomMoodTone || 
+            newRandomCategory != _activeProfile!.lastRandomCategory || 
+            newRandomGoal != _activeProfile!.lastRandomGoal) {
+          await updateSettings(
+            lastRandomMoodTone: newRandomMoodTone,
+            lastRandomCategory: newRandomCategory,
+            lastRandomGoal: newRandomGoal
+          );
+        }
+        
+        // Only update the any* flags if they've changed and we're not in temporary mode
+        if (anyMoodTone != _activeProfile!.anyMoodTone ||
+            anyCategory != _activeProfile!.anyCategory ||
+            anyGoal != _activeProfile!.anyGoal) {
+          await updateSettings(
+            anyMoodTone: anyMoodTone,
+            anyCategory: anyCategory,
+            anyGoal: anyGoal
+          );
+        }
+      } else {
+        // For temporary random, we still need the current random selections in memory
+        _tempRandomMoodTone = newRandomMoodTone;
+        _tempRandomCategory = newRandomCategory;
+        _tempRandomGoal = newRandomGoal;
       }
       
       final question = await _llmService.generateRelationshipQuestion(
@@ -317,6 +369,14 @@ class QuestionProvider extends ChangeNotifier {
       );
       
       _currentQuestion = question;
+      
+      // Clear temporary random values if this wasn't a temporary random question
+      if (!temporaryRandom) {
+        _tempRandomMoodTone = null;
+        _tempRandomCategory = null;
+        _tempRandomGoal = null;
+      }
+      
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -372,18 +432,32 @@ class QuestionProvider extends ChangeNotifier {
   
   Future<void> generateRandomQuestion({String? language}) async {
     // Generate question with random parameters but don't update saved settings
-    return generateQuestion(
-      language: language,
-      anyMoodTone: true, // Use "Anything" for mood tone
-      anyCategory: true, // Use "Anything" for category
-      anyGoal: true,     // Use "Anything" for goal
-      keepCurrentSettings: false,
-      // No preset values - context, comfort level, and depth preserved by generateQuestion
-      presetMoodTone: null,
-      presetCategory: null,
-      presetGoal: null,
-      presetDepth: null  // Don't change depth
-    );
+    // We'll temporarily set all parameters to 'Random'
+    
+    // Save current settings
+    List<String> originalMoodTone = List.from(_activeProfile?.moodTone ?? []);
+    List<String> originalCategory = List.from(_activeProfile?.thematicCategory ?? []);
+    List<String> originalGoal = List.from(_activeProfile?.goalOfInteraction ?? []);
+    
+    try {
+      // Generate with temporary 'Random' settings
+      return await generateQuestion(
+        language: language,
+        presetMoodTone: 'Random',
+        presetCategory: 'Random',
+        presetGoal: 'Random',
+        temporaryRandom: true  // Flag to indicate this is a temporary random selection
+      );
+    } finally {
+      // Restore the original settings (don't wait for the result since we don't need it)
+      if (_activeProfile != null) {
+        updateSettings(
+          moodTone: originalMoodTone,
+          thematicCategory: originalCategory,
+          goalOfInteraction: originalGoal
+        );
+      }
+    }
   }
   
   // Save question with feedback to database

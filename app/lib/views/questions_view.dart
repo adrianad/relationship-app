@@ -32,10 +32,7 @@ class _QuestionsViewState extends State<QuestionsView> {
   String _currentComfortLevel = 'Moderate';
   String _currentGoal = 'Getting to know each other better';
   
-  // Track if "Anything" is selected for different categories
-  bool _anyMoodTone = false;
-  bool _anyCategory = false;
-  bool _anyGoal = false;
+  // Random selection flags are now in profile
   
   // Temporary settings for display only (used by presets)
   String _tempMoodTone = '';
@@ -61,7 +58,7 @@ class _QuestionsViewState extends State<QuestionsView> {
       setState(() {
         _currentQuestion = questionProvider.currentQuestion;
         
-        // Initialize current settings for parameter display
+        // Initialize current settings for parameter display from the active profile
         if (questionProvider.moodTone.isNotEmpty) {
           _currentMoodTone = questionProvider.moodTone.first;
         }
@@ -109,9 +106,9 @@ class _QuestionsViewState extends State<QuestionsView> {
       // Load new question from the question provider with current language
       await questionProvider.generateQuestion(
         language: languageProvider.currentLocale.languageCode,
-        anyMoodTone: _anyMoodTone,
-        anyCategory: _anyCategory,
-        anyGoal: _anyGoal
+        anyMoodTone: questionProvider.anyMoodTone,
+        anyCategory: questionProvider.anyCategory,
+        anyGoal: questionProvider.anyGoal
       );
       
       setState(() {
@@ -120,14 +117,14 @@ class _QuestionsViewState extends State<QuestionsView> {
         _moreLikeThis = false; // Reset button state
         _lessLikeThis = false; // Reset button state
         
-        // Update current settings for parameter display if not "Anything"
-        if (!_anyMoodTone && questionProvider.moodTone.isNotEmpty) {
+        // Update current settings for parameter display
+        if (questionProvider.moodTone.isNotEmpty) {
           _currentMoodTone = questionProvider.moodTone.first;
         }
-        if (!_anyCategory && questionProvider.thematicCategory.isNotEmpty) {
+        if (questionProvider.thematicCategory.isNotEmpty) {
           _currentCategory = questionProvider.thematicCategory.first;
         }
-        if (!_anyGoal && questionProvider.goalOfInteraction.isNotEmpty) {
+        if (questionProvider.goalOfInteraction.isNotEmpty) {
           _currentGoal = questionProvider.goalOfInteraction.first;
         }
         _currentComfortLevel = questionProvider.comfortLevel;
@@ -201,6 +198,13 @@ class _QuestionsViewState extends State<QuestionsView> {
     });
     
     try {
+      // Clear any random settings
+      await questionProvider.updateSettings(
+        anyMoodTone: false,
+        anyCategory: false,
+        anyGoal: false
+      );
+      
       await questionProvider.generateFunnyQuestion(
         language: languageProvider.currentLocale.languageCode
       );
@@ -239,6 +243,13 @@ class _QuestionsViewState extends State<QuestionsView> {
     });
     
     try {
+      // Clear any random settings
+      await questionProvider.updateSettings(
+        anyMoodTone: false,
+        anyCategory: false,
+        anyGoal: false
+      );
+      
       await questionProvider.generateDeepQuestion(
         language: languageProvider.currentLocale.languageCode
       );
@@ -277,6 +288,13 @@ class _QuestionsViewState extends State<QuestionsView> {
     });
     
     try {
+      // Clear any random settings
+      await questionProvider.updateSettings(
+        anyMoodTone: false,
+        anyCategory: false,
+        anyGoal: false
+      );
+      
       await questionProvider.generateIcebreakerQuestion(
         language: languageProvider.currentLocale.languageCode
       );
@@ -315,6 +333,7 @@ class _QuestionsViewState extends State<QuestionsView> {
     });
     
     try {
+      // Don't update profile settings, just use random temporarily
       // Generate a question with random settings
       await questionProvider.generateRandomQuestion(
         language: languageProvider.currentLocale.languageCode
@@ -428,8 +447,9 @@ class _QuestionsViewState extends State<QuestionsView> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
               // Quick Settings Panel Toggle Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -472,14 +492,18 @@ class _QuestionsViewState extends State<QuestionsView> {
                             ChoiceChip(
                               label: Text('Random', style: TextStyle(
                                 fontSize: 12,
-                                color: _anyMoodTone ? Colors.white : null,
+                                color: _currentMoodTone == 'Random' ? Colors.white : null,
                               )),
-                              selected: _anyMoodTone,
-                              backgroundColor: Colors.grey.withOpacity(0.2),
-                              selectedColor: Colors.indigo.shade400,
-                              onSelected: (selected) async {
+                              selected: _currentMoodTone == 'Random',
+                              backgroundColor: Colors.grey.shade200,
+                              selectedColor: Colors.blueGrey.shade600,
+                              onSelected: (_) async {
+                                await questionProvider.updateSettings(
+                                  anyMoodTone: false,
+                                  moodTone: ['Random']
+                                );
                                 setState(() {
-                                  _anyMoodTone = selected;
+                                  _currentMoodTone = 'Random';
                                 });
                               },
                             ),
@@ -487,9 +511,9 @@ class _QuestionsViewState extends State<QuestionsView> {
                               .map((option) => ChoiceChip(
                                     label: Text(getLocalizedOption(context, option), style: TextStyle(
                                       fontSize: 12,
-                                      color: (!_anyMoodTone && _currentMoodTone == option) ? Colors.white : null,
+                                      color: (_currentMoodTone == option) ? Colors.white : null,
                                     )),
-                                    selected: !_anyMoodTone && _currentMoodTone == option,
+                                    selected: _currentMoodTone == option,
                                     selectedColor: Colors.blueGrey.shade600,
                                     backgroundColor: Colors.grey.shade200,
                                     onSelected: (_) async {
@@ -498,7 +522,6 @@ class _QuestionsViewState extends State<QuestionsView> {
                                       );
                                       setState(() {
                                         _currentMoodTone = option;
-                                        _anyMoodTone = false;
                                       });
                                     },
                                   ))
@@ -519,14 +542,18 @@ class _QuestionsViewState extends State<QuestionsView> {
                             ChoiceChip(
                               label: Text('Random', style: TextStyle(
                                 fontSize: 12,
-                                color: _anyCategory ? Colors.white : null,
+                                color: _currentCategory == 'Random' ? Colors.white : null,
                               )),
-                              selected: _anyCategory,
-                              backgroundColor: Colors.grey.withOpacity(0.2),
-                              selectedColor: Colors.indigo.shade400,
-                              onSelected: (selected) async {
+                              selected: _currentCategory == 'Random',
+                              backgroundColor: Colors.grey.shade200,
+                              selectedColor: Colors.blueGrey.shade600,
+                              onSelected: (_) async {
+                                await questionProvider.updateSettings(
+                                  anyCategory: false,
+                                  thematicCategory: ['Random']
+                                );
                                 setState(() {
-                                  _anyCategory = selected;
+                                  _currentCategory = 'Random';
                                 });
                               },
                             ),
@@ -534,9 +561,9 @@ class _QuestionsViewState extends State<QuestionsView> {
                               .map((option) => ChoiceChip(
                                     label: Text(getLocalizedOption(context, option), style: TextStyle(
                                       fontSize: 12,
-                                      color: (!_anyCategory && _currentCategory == option) ? Colors.white : null,
+                                      color: (_currentCategory == option) ? Colors.white : null,
                                     )),
-                                    selected: !_anyCategory && _currentCategory == option,
+                                    selected: _currentCategory == option,
                                     selectedColor: Colors.blueGrey.shade600,
                                     backgroundColor: Colors.grey.shade200,
                                     onSelected: (_) async {
@@ -545,7 +572,6 @@ class _QuestionsViewState extends State<QuestionsView> {
                                       );
                                       setState(() {
                                         _currentCategory = option;
-                                        _anyCategory = false;
                                       });
                                     },
                                   ))
@@ -568,14 +594,18 @@ class _QuestionsViewState extends State<QuestionsView> {
                             ChoiceChip(
                               label: Text('Random', style: TextStyle(
                                 fontSize: 12,
-                                color: _anyGoal ? Colors.white : null,
+                                color: _currentGoal == 'Random' ? Colors.white : null,
                               )),
-                              selected: _anyGoal,
-                              backgroundColor: Colors.grey.withOpacity(0.2),
-                              selectedColor: Colors.indigo.shade400,
-                              onSelected: (selected) async {
+                              selected: _currentGoal == 'Random',
+                              backgroundColor: Colors.grey.shade200,
+                              selectedColor: Colors.blueGrey.shade600,
+                              onSelected: (_) async {
+                                await questionProvider.updateSettings(
+                                  anyGoal: false,
+                                  goalOfInteraction: ['Random']
+                                );
                                 setState(() {
-                                  _anyGoal = selected;
+                                  _currentGoal = 'Random';
                                 });
                               },
                             ),
@@ -583,9 +613,9 @@ class _QuestionsViewState extends State<QuestionsView> {
                               .map((option) => ChoiceChip(
                                 label: Text(getLocalizedOption(context, option), style: TextStyle(
                                   fontSize: 12,
-                                  color: (!_anyGoal && _currentGoal == option) ? Colors.white : null,
+                                  color: (_currentGoal == option) ? Colors.white : null,
                                 )),
-                                selected: !_anyGoal && _currentGoal == option,
+                                selected: _currentGoal == option,
                                 selectedColor: Colors.blueGrey.shade600,
                                 backgroundColor: Colors.grey.shade200,
                                 onSelected: (_) async {
@@ -594,7 +624,6 @@ class _QuestionsViewState extends State<QuestionsView> {
                                   );
                                   setState(() {
                                     _currentGoal = option;
-                                    _anyGoal = false;
                                   });
                                 },
                               ))
@@ -685,31 +714,31 @@ class _QuestionsViewState extends State<QuestionsView> {
                   ] else ...[  
                     // Otherwise show the actual settings
                     Chip(
-                      label: Text(_anyMoodTone 
+                      label: Text(_currentMoodTone == 'Random'
                         ? 'Random${questionProvider.lastRandomMoodTone != null ? ': ${getLocalizedOption(context, questionProvider.lastRandomMoodTone!)}' : ''}'
                         : getLocalizedOption(context, _currentMoodTone)),
                       avatar: const Icon(Icons.mood, size: 16),
                       visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
                       labelStyle: const TextStyle(fontSize: 12),
-                      backgroundColor: _anyMoodTone ? Colors.indigo.withOpacity(0.2) : Colors.grey.shade200,
+                      backgroundColor: _currentMoodTone == 'Random' ? Colors.indigo.withOpacity(0.2) : Colors.grey.shade200,
                     ),
                     Chip(
-                      label: Text(_anyCategory 
+                      label: Text(_currentCategory == 'Random'
                         ? 'Random${questionProvider.lastRandomCategory != null ? ': ${getLocalizedOption(context, questionProvider.lastRandomCategory!)}' : ''}'
                         : getLocalizedOption(context, _currentCategory)),
                       avatar: const Icon(Icons.category, size: 16),
                       visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
                       labelStyle: const TextStyle(fontSize: 12),
-                      backgroundColor: _anyCategory ? Colors.indigo.withOpacity(0.2) : Colors.grey.shade200,
+                      backgroundColor: _currentCategory == 'Random' ? Colors.indigo.withOpacity(0.2) : Colors.grey.shade200,
                     ),
                     Chip(
-                      label: Text(_anyGoal 
+                      label: Text(_currentGoal == 'Random'
                         ? 'Random${questionProvider.lastRandomGoal != null ? ': ${getLocalizedOption(context, questionProvider.lastRandomGoal!)}' : ''}'
                         : getLocalizedOption(context, _currentGoal)),
                       avatar: const Icon(Icons.flag, size: 16),
                       visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
                       labelStyle: const TextStyle(fontSize: 12),
-                      backgroundColor: _anyGoal ? Colors.indigo.withOpacity(0.2) : Colors.grey.shade200,
+                      backgroundColor: _currentGoal == 'Random' ? Colors.indigo.withOpacity(0.2) : Colors.grey.shade200,
                     ),
                   ],
                   // Only show comfort level if not moved to profile settings
@@ -812,10 +841,8 @@ class _QuestionsViewState extends State<QuestionsView> {
                 ],
               ),
               
-              // Spacer to push the buttons to the bottom
-              Expanded(
-                child: Container(),
-              ),
+              // Add some spacing between rating and buttons
+              const SizedBox(height: 20),
               
               // Preset buttons above the main action buttons
               Padding(
@@ -897,6 +924,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

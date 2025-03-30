@@ -19,7 +19,25 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path, 
+      version: 2, 
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB
+    );
+  }
+  
+  // Handles database migrations
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add the new columns to the profiles table for random settings
+      await db.execute('ALTER TABLE profiles ADD COLUMN any_mood_tone INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE profiles ADD COLUMN any_category INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE profiles ADD COLUMN any_goal INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE profiles ADD COLUMN last_random_mood_tone TEXT');
+      await db.execute('ALTER TABLE profiles ADD COLUMN last_random_category TEXT');
+      await db.execute('ALTER TABLE profiles ADD COLUMN last_random_goal TEXT');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -36,7 +54,13 @@ class DatabaseHelper {
         comfort_level TEXT NOT NULL,
         goal_of_interaction TEXT NOT NULL,
         thematic_category TEXT NOT NULL,
-        llm_provider TEXT NOT NULL
+        llm_provider TEXT NOT NULL,
+        any_mood_tone INTEGER NOT NULL DEFAULT 0,
+        any_category INTEGER NOT NULL DEFAULT 0,
+        any_goal INTEGER NOT NULL DEFAULT 0,
+        last_random_mood_tone TEXT,
+        last_random_category TEXT,
+        last_random_goal TEXT
       )
     ''');
 
