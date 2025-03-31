@@ -52,9 +52,17 @@ class QuestionProvider extends ChangeNotifier {
       if (_activeProfile == null) {
         // Create default profile if none exists
         final defaultProfile = Profile.defaultProfile();
-        await _db.insertProfile(defaultProfile);
+        final id = await _db.insertProfile(defaultProfile);
+        await _db.setActiveProfile(id); // Make sure it's set as active
         _activeProfile = await _db.getActiveProfile();
       }
+      
+      print('Loaded active profile:');
+      print('- ID: ${_activeProfile?.id}');
+      print('- moodTone: ${_activeProfile?.moodTone.join(',')} (anyMoodTone: ${_activeProfile?.anyMoodTone})');
+      print('- thematicCategory: ${_activeProfile?.thematicCategory.join(',')} (anyCategory: ${_activeProfile?.anyCategory})');
+      print('- goalOfInteraction: ${_activeProfile?.goalOfInteraction.join(',')} (anyGoal: ${_activeProfile?.anyGoal})');
+      
       notifyListeners();
     } catch (e) {
       print('Error loading active profile: $e');
@@ -106,6 +114,14 @@ class QuestionProvider extends ChangeNotifier {
   List<String> get goalOfInteraction => _activeProfile?.goalOfInteraction ?? ['Getting to know each other better'];
   List<String> get thematicCategory => _activeProfile?.thematicCategory ?? ['Past experiences'];
   String get currentProvider => _activeProfile?.llmProvider ?? 'OpenAI';
+  
+  // Debug method to print current profile settings
+  void printProfileSettings() {
+    print('Current Profile Settings:');
+    print('- moodTone: ${moodTone.join(',')} (anyMoodTone: $anyMoodTone)');
+    print('- thematicCategory: ${thematicCategory.join(',')} (anyCategory: $anyCategory)');
+    print('- goalOfInteraction: ${goalOfInteraction.join(',')} (anyGoal: $anyGoal)');
+  }
   
   // Set active profile
   void setActiveProfile(Profile profile) {
@@ -218,6 +234,7 @@ class QuestionProvider extends ChangeNotifier {
       
       // Debug print to track the update
       print('Updating settings: moodTone=$moodTone, category=$thematicCategory, goal=$goalOfInteraction');
+      print('Random flags: anyMoodTone=$anyMoodTone, anyCategory=$anyCategory, anyGoal=$anyGoal');
       
       // Handle the 'Random' value in settings
       bool newAnyMoodTone = anyMoodTone ?? _activeProfile!.anyMoodTone;
@@ -259,6 +276,20 @@ class QuestionProvider extends ChangeNotifier {
         }
       }
       
+      // IMPORTANT: When explicitly setting a specific category (not Random),
+      // we need to ensure anyMoodTone/anyCategory/anyGoal are set to false
+      if (moodTone != null && !moodTone.contains('Random')) {
+        newAnyMoodTone = false;
+      }
+      
+      if (thematicCategory != null && !thematicCategory.contains('Random')) {
+        newAnyCategory = false;
+      }
+      
+      if (goalOfInteraction != null && !goalOfInteraction.contains('Random')) {
+        newAnyGoal = false;
+      }
+      
       final updatedProfile = _activeProfile!.copyWith(
         depthOfRelationship: depthOfRelationship,
         moodTone: adjustedMoodTone ?? moodTone,
@@ -279,6 +310,8 @@ class QuestionProvider extends ChangeNotifier {
       
       // Debug print to verify the updated profile
       print('Updated profile: moodTone=${_activeProfile!.moodTone}, anyMoodTone=${_activeProfile!.anyMoodTone}');
+      print('Updated profile: category=${_activeProfile!.thematicCategory}, anyCategory=${_activeProfile!.anyCategory}');
+      print('Updated profile: goal=${_activeProfile!.goalOfInteraction}, anyGoal=${_activeProfile!.anyGoal}');
       
       notifyListeners();
     } catch (e) {

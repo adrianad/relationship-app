@@ -13,6 +13,27 @@ class QuestionsView extends StatefulWidget {
   State<QuestionsView> createState() => _QuestionsViewState();
 }
 
+// Preset class to represent available presets
+class Preset {
+  final String name;
+  final IconData icon;
+  final Color color;
+  final String moodTone;
+  final String category;
+  final String goal;
+  final Function(BuildContext) onApply;
+  
+  const Preset({
+    required this.name,
+    required this.icon,
+    required this.color,
+    required this.moodTone,
+    required this.category,
+    required this.goal,
+    required this.onApply,
+  });
+}
+
 class _QuestionsViewState extends State<QuestionsView> {
   late String _currentQuestion;
   int _rating = 3; // Default rating set to 3 stars
@@ -40,16 +61,86 @@ class _QuestionsViewState extends State<QuestionsView> {
   String _tempDepth = '';
   String _tempGoal = '';
   bool _showingTempSettings = false;
+  
+  // Preset selection functionality
+  String _activePreset = 'Funny'; // Default preset
+
+  // Define list of available presets
+  late List<Preset> _presets;
+  
+  // Initialize presets
+  void _initializePresets() {
+    _presets = [
+      Preset(
+        name: 'Funny',
+        icon: Icons.lightbulb,
+        color: Colors.amber.shade600,
+        moodTone: 'Funny/Playful',
+        category: 'Hypothetical scenarios',
+        goal: 'Provoking humor/playfulness',
+        onApply: (context) => _generateFunnyQuestion(),
+      ),
+      Preset(
+        name: 'Deep',
+        icon: Icons.psychology,
+        color: Colors.grey.shade700,
+        moodTone: 'Deep/Reflective',
+        category: 'Personal values/beliefs',
+        goal: 'Stimulating thoughtful discussion',
+        onApply: (context) => _generateDeepQuestion(),
+      ),
+      Preset(
+        name: 'Icebreaker',
+        icon: Icons.ac_unit,
+        color: Colors.teal.shade600,
+        moodTone: 'Funny/Playful',
+        category: 'Preferences',
+        goal: 'Breaking the ice',
+        onApply: (context) => _generateIcebreakerQuestion(),
+      ),
+      Preset(
+        name: 'Random',
+        icon: Icons.shuffle,
+        color: Colors.indigo.shade500,
+        moodTone: 'Random',
+        category: 'Random',
+        goal: 'Random',
+        onApply: (context) => _generateRandomQuestion(),
+      ),
+    ];
+  }
+  
+  // Get the currently active preset object
+  Preset get _currentPreset => _presets.firstWhere(
+    (preset) => preset.name == _activePreset,
+    orElse: () => _presets.first
+  );
+  
+  // Apply the selected preset
+  void _applyPreset(Preset preset) {
+    preset.onApply(context);
+  }
+  
+  // Set a new active preset
+  void _setActivePreset(String presetName) {
+    setState(() {
+      _activePreset = presetName;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _currentQuestion = widget.questionText;
+    _initializePresets();
     
     // We need to use a post-frame callback for any provider access in initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final questionProvider = Provider.of<QuestionProvider>(context, listen: false);
       final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      
+      // Debug - log current profile settings
+      questionProvider.printProfileSettings();
       
       // Make sure the question provider has the correct language
       questionProvider.updateDefaultQuestion(languageProvider.currentLocale.languageCode);
@@ -77,6 +168,12 @@ class _QuestionsViewState extends State<QuestionsView> {
           _currentGoal = questionProvider.goalOfInteraction.first;
         }
         _currentComfortLevel = questionProvider.comfortLevel;
+        
+        // Debug log
+        print('Initialized UI state with:');
+        print('- _currentMoodTone: $_currentMoodTone');
+        print('- _currentCategory: $_currentCategory'); 
+        print('- _currentGoal: $_currentGoal');
       });
     });
   }
@@ -89,6 +186,10 @@ class _QuestionsViewState extends State<QuestionsView> {
   Future<void> _generateQuestion() async {
     final questionProvider = Provider.of<QuestionProvider>(context, listen: false);
     final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    
+    // Debug - log settings before generating
+    print('Generating new question with saved settings:');
+    questionProvider.printProfileSettings();
     
     // Get the default question for the current language
     final defaultQuestion = questionProvider.getDefaultQuestion(
@@ -111,6 +212,29 @@ class _QuestionsViewState extends State<QuestionsView> {
     });
     
     try {
+      // Make sure any UI changes to settings are explicitly saved to the profile
+      // before generating the question
+      if (!questionProvider.anyMoodTone && _currentMoodTone != questionProvider.moodTone.first) {
+        await questionProvider.updateSettings(
+          anyMoodTone: false,
+          moodTone: [_currentMoodTone]
+        );
+      }
+      
+      if (!questionProvider.anyCategory && _currentCategory != questionProvider.thematicCategory.first) {
+        await questionProvider.updateSettings(
+          anyCategory: false,
+          thematicCategory: [_currentCategory]
+        );
+      }
+      
+      if (!questionProvider.anyGoal && _currentGoal != questionProvider.goalOfInteraction.first) {
+        await questionProvider.updateSettings(
+          anyGoal: false,
+          goalOfInteraction: [_currentGoal]
+        );
+      }
+      
       // Load new question from the question provider with current language
       // Using the user's saved settings (as stored in the profile)
       await questionProvider.generateQuestion(
@@ -152,6 +276,10 @@ class _QuestionsViewState extends State<QuestionsView> {
         _isLoading = false;
         _error = null; // Clear any previous errors
       });
+      
+      // Debug - log settings after generating
+      print('Settings after question generation:');
+      questionProvider.printProfileSettings();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -500,6 +628,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                               backgroundColor: Colors.grey.shade200,
                               selectedColor: Colors.blueGrey.shade600,
                               onSelected: (_) async {
+                                print('Selecting Random mood/tone');
                                 // Select Random regardless of previous state
                                 await questionProvider.updateSettings(
                                   anyMoodTone: true,
@@ -508,6 +637,8 @@ class _QuestionsViewState extends State<QuestionsView> {
                                 setState(() {
                                   _currentMoodTone = 'Random';
                                 });
+                                // Debug - confirm update
+                                questionProvider.printProfileSettings();
                               },
                             ),
                             ...questionProvider.moodOptions
@@ -553,6 +684,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                               backgroundColor: Colors.grey.shade200,
                               selectedColor: Colors.blueGrey.shade600,
                               onSelected: (_) async {
+                                print('Selecting Random category');
                                 // Select Random regardless of previous state
                                 await questionProvider.updateSettings(
                                   anyCategory: true,
@@ -561,6 +693,8 @@ class _QuestionsViewState extends State<QuestionsView> {
                                 setState(() {
                                   _currentCategory = 'Random';
                                 });
+                                // Debug - confirm update
+                                questionProvider.printProfileSettings();
                               },
                             ),
                             ...questionProvider.categoryOptions
@@ -574,6 +708,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                                     backgroundColor: Colors.grey.shade200,
                                     onSelected: (_) async {
                                       // Simply select this option and turn off Random
+                                      print('Selecting category: $option');
                                       await questionProvider.updateSettings(
                                         anyCategory: false, // Turn off Random
                                         thematicCategory: [option],
@@ -581,6 +716,8 @@ class _QuestionsViewState extends State<QuestionsView> {
                                       setState(() {
                                         _currentCategory = option;
                                       });
+                                      // Debug - confirm update
+                                      questionProvider.printProfileSettings();
                                     },
                                   ))
                               .toList(),
@@ -608,6 +745,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                               backgroundColor: Colors.grey.shade200,
                               selectedColor: Colors.blueGrey.shade600,
                               onSelected: (_) async {
+                                print('Selecting Random goal');
                                 // Select Random regardless of previous state
                                 await questionProvider.updateSettings(
                                   anyGoal: true,
@@ -616,6 +754,8 @@ class _QuestionsViewState extends State<QuestionsView> {
                                 setState(() {
                                   _currentGoal = 'Random';
                                 });
+                                // Debug - confirm update
+                                questionProvider.printProfileSettings();
                               },
                             ),
                             ...questionProvider.goalOptions
@@ -629,6 +769,7 @@ class _QuestionsViewState extends State<QuestionsView> {
                                 backgroundColor: Colors.grey.shade200,
                                 onSelected: (_) async {
                                   // Simply select this option and turn off Random
+                                  print('Selecting goal: $option');
                                   await questionProvider.updateSettings(
                                     anyGoal: false, // Turn off Random
                                     goalOfInteraction: [option],
@@ -636,6 +777,8 @@ class _QuestionsViewState extends State<QuestionsView> {
                                   setState(() {
                                     _currentGoal = option;
                                   });
+                                  // Debug - confirm update
+                                  questionProvider.printProfileSettings();
                                 },
                               ))
                               .toList(),
@@ -855,79 +998,117 @@ class _QuestionsViewState extends State<QuestionsView> {
               // Add some spacing between rating and buttons
               const SizedBox(height: 20),
               
-              // Preset buttons above the main action buttons
+              // Split button for preset selection
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.lightbulb, size: 16),
-                        label: Text(localizations.moodFunny),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber.shade600,
-                          foregroundColor: Colors.white,
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: _currentPreset.color,
                         ),
-                        onPressed: _generateFunnyQuestion,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.psychology, size: 16),
-                        label: Text(localizations.moodDeep),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade700,
-                          foregroundColor: Colors.white,
+                        child: Row(
+                          children: [
+                            // Main button part (left side) - applies the current preset
+                            Expanded(
+                              flex: 5,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _applyPreset(_currentPreset),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    alignment: Alignment.center,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(_currentPreset.icon, color: Colors.white, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          _currentPreset.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Vertical divider
+                            Container(
+                              height: 28,
+                              width: 1,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            // Dropdown toggle part (right side) - shows preset options
+                            Expanded(
+                              flex: 1,
+                              child: PopupMenuButton<String>(
+                                icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                onSelected: _setActivePreset,
+                                itemBuilder: (context) => _presets.map((preset) => 
+                                  PopupMenuItem<String>(
+                                    value: preset.name,
+                                    child: Row(
+                                      children: [
+                                        Icon(preset.icon, color: preset.color, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(preset.name),
+                                      ],
+                                    ),
+                                  )
+                                ).toList(),
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: _generateDeepQuestion,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.ac_unit, size: 16),
-                        label: Text(localizations.goalBreakingIce),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal.shade600,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: _generateIcebreakerQuestion,
                       ),
                     ),
                   ],
                 ),
               ),
               
-              // Action buttons at bottom
+              // My Settings button with same style as presets
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Row(
                   children: [
-                    // Random question button
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _generateRandomQuestion,
-                        icon: const Icon(Icons.shuffle),
-                        label: const Text('Random'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: Colors.indigo.shade500,
-                          foregroundColor: Colors.white,
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.blueGrey.shade600,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // New question with user's saved settings button
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _loadNewQuestion,
-                        icon: const Icon(Icons.question_mark),
-                        label: const Text('New Question'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          backgroundColor: Colors.blueGrey.shade600,
-                          foregroundColor: Colors.white,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _loadNewQuestion,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.settings_suggest, color: Colors.white, size: 18),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'New Question',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
