@@ -33,15 +33,32 @@ class QuestionProvider extends ChangeNotifier {
   
   // Options for dropdowns and multi-selects
   final List<String> depthOptions = ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers'];
-  final List<String> moodOptions = ['Neutral/Balanced', 'Funny/Playful', 'Serious/Thoughtful', 'Deep/Reflective', 'Sensual/Intimate', 'Crazy/Absurd', 'Provocative/Dirty'];
+  final List<String> moodOptions = ['Funny/Playful', 'Serious/Thoughtful', 'Deep/Reflective', 'Sensual/Intimate', 'Crazy/Absurd', 'Provocative/Dirty'];
   final List<String> contextOptions = ['Casual hangout', 'Date night', 'Online chat', 'Party setting', 'Private/intimate setting', 'Road trip', 'Dinner conversation'];
   final List<String> comfortOptions = ['Safe (low risk)', 'Moderate', 'High Risk'];
   final List<String> goalOptions = ['Getting to know each other better', 'Deepening intimacy', 'Breaking the ice', 'Stimulating thoughtful discussion', 'Provoking humor/playfulness', 'Exploring fantasies/desires'];
   final List<String> categoryOptions = ['Past experiences', 'Personal values/beliefs', 'Hypothetical scenarios', 'Dreams/goals/ambitions', 'Preferences', 'Relationships/intimacy', 'Secrets/confessions'];
   
-  // Constructor - initialize with current language
+  // Constructor - initialize with current language and load active profile
   QuestionProvider() {
     _initializeLanguage();
+    _loadActiveProfile();
+  }
+  
+  // Load the active profile from the database
+  Future<void> _loadActiveProfile() async {
+    try {
+      _activeProfile = await _db.getActiveProfile();
+      if (_activeProfile == null) {
+        // Create default profile if none exists
+        final defaultProfile = Profile.defaultProfile();
+        await _db.insertProfile(defaultProfile);
+        _activeProfile = await _db.getActiveProfile();
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Error loading active profile: $e');
+    }
   }
   
   // Initialize the provider with the system language or saved language
@@ -199,16 +216,59 @@ class QuestionProvider extends ChangeNotifier {
         throw Exception('No active profile');
       }
       
+      // Debug print to track the update
+      print('Updating settings: moodTone=$moodTone, category=$thematicCategory, goal=$goalOfInteraction');
+      
+      // Handle the 'Random' value in settings
+      bool newAnyMoodTone = anyMoodTone ?? _activeProfile!.anyMoodTone;
+      bool newAnyCategory = anyCategory ?? _activeProfile!.anyCategory;
+      bool newAnyGoal = anyGoal ?? _activeProfile!.anyGoal;
+      
+      // If selecting 'Random' as a value, treat it specially
+      List<String>? adjustedMoodTone = moodTone;
+      List<String>? adjustedCategory = thematicCategory;
+      List<String>? adjustedGoal = goalOfInteraction;
+      
+      // If we are setting mood tone to Random, set the anyMoodTone flag
+      if (adjustedMoodTone != null && adjustedMoodTone.contains('Random')) {
+        newAnyMoodTone = true;
+        // Remove 'Random' from the list
+        adjustedMoodTone = adjustedMoodTone.where((item) => item != 'Random').toList();
+        if (adjustedMoodTone.isEmpty) {
+          adjustedMoodTone = [moodOptions.first]; // Default to first option
+        }
+      }
+      
+      // If we are setting category to Random, set the anyCategory flag
+      if (adjustedCategory != null && adjustedCategory.contains('Random')) {
+        newAnyCategory = true;
+        // Remove 'Random' from the list
+        adjustedCategory = adjustedCategory.where((item) => item != 'Random').toList();
+        if (adjustedCategory.isEmpty) {
+          adjustedCategory = [categoryOptions.first]; // Default to first option
+        }
+      }
+      
+      // If we are setting goal to Random, set the anyGoal flag
+      if (adjustedGoal != null && adjustedGoal.contains('Random')) {
+        newAnyGoal = true;
+        // Remove 'Random' from the list
+        adjustedGoal = adjustedGoal.where((item) => item != 'Random').toList();
+        if (adjustedGoal.isEmpty) {
+          adjustedGoal = [goalOptions.first]; // Default to first option
+        }
+      }
+      
       final updatedProfile = _activeProfile!.copyWith(
         depthOfRelationship: depthOfRelationship,
-        moodTone: moodTone,
+        moodTone: adjustedMoodTone ?? moodTone,
         context: context,
         comfortLevel: comfortLevel,
-        goalOfInteraction: goalOfInteraction,
-        thematicCategory: thematicCategory,
-        anyMoodTone: anyMoodTone,
-        anyCategory: anyCategory,
-        anyGoal: anyGoal,
+        goalOfInteraction: adjustedGoal ?? goalOfInteraction,
+        thematicCategory: adjustedCategory ?? thematicCategory,
+        anyMoodTone: newAnyMoodTone,
+        anyCategory: newAnyCategory,
+        anyGoal: newAnyGoal,
         lastRandomMoodTone: lastRandomMoodTone,
         lastRandomCategory: lastRandomCategory,
         lastRandomGoal: lastRandomGoal,
@@ -216,9 +276,14 @@ class QuestionProvider extends ChangeNotifier {
       
       await _db.updateProfile(updatedProfile);
       _activeProfile = updatedProfile;
+      
+      // Debug print to verify the updated profile
+      print('Updated profile: moodTone=${_activeProfile!.moodTone}, anyMoodTone=${_activeProfile!.anyMoodTone}');
+      
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to update settings: ${e.toString()}';
+      print('Error updating settings: $e');
       notifyListeners();
     }
   }
@@ -297,7 +362,8 @@ class QuestionProvider extends ChangeNotifier {
       String? newRandomCategory;
       String? newRandomGoal;
       
-      if (anyMoodTone || moodToneToUse.contains('Random')) {
+      bool useRandomMood = anyMoodTone || _activeProfile!.anyMoodTone;
+      if (useRandomMood) {
         // Choose a random mood tone from options
         final randomMood = moodOptions[DateTime.now().microsecond % moodOptions.length];
         moodToneStr = randomMood;
@@ -307,7 +373,8 @@ class QuestionProvider extends ChangeNotifier {
         newRandomMoodTone = null; // Clear the random selection when not using random
       }
       
-      if (anyCategory || categoryToUse.contains('Random')) {
+      bool useRandomCategory = anyCategory || _activeProfile!.anyCategory;
+      if (useRandomCategory) {
         // Choose a random category from options
         final randomCategory = categoryOptions[DateTime.now().millisecond % categoryOptions.length];
         categoryStr = randomCategory;
@@ -317,7 +384,8 @@ class QuestionProvider extends ChangeNotifier {
         newRandomCategory = null; // Clear the random selection when not using random
       }
       
-      if (anyGoal || goalToUse.contains('Random')) {
+      bool useRandomGoal = anyGoal || _activeProfile!.anyGoal;
+      if (useRandomGoal) {
         // Choose a random goal from options
         final randomGoal = goalOptions[DateTime.now().second % goalOptions.length];
         goalStr = randomGoal;
@@ -327,9 +395,11 @@ class QuestionProvider extends ChangeNotifier {
         newRandomGoal = null; // Clear the random selection when not using random
       }
       
-      // Update the profile with the new random selections if not temporary
+          // Handle random selections differently based on whether this is a temporary operation
       if (_activeProfile != null && !temporaryRandom) {
-        // Only update if the values actually changed
+        // For permanent settings, update the profile with the new random selections and any* flags
+        
+        // Only update the lastRandom* values if they actually changed
         if (newRandomMoodTone != _activeProfile!.lastRandomMoodTone || 
             newRandomCategory != _activeProfile!.lastRandomCategory || 
             newRandomGoal != _activeProfile!.lastRandomGoal) {
@@ -351,10 +421,15 @@ class QuestionProvider extends ChangeNotifier {
           );
         }
       } else {
-        // For temporary random, we still need the current random selections in memory
+        // For temporary operations (presets or random preset):
+        // 1. Store the random selections in temporary memory for display purposes
+        // 2. Do NOT update the profile settings
         _tempRandomMoodTone = newRandomMoodTone;
         _tempRandomCategory = newRandomCategory;
         _tempRandomGoal = newRandomGoal;
+        
+        // Don't make any changes to the saved profile settings
+        print('Using temporary settings - not updating profile');
       }
       
       final question = await _llmService.generateRelationshipQuestion(
@@ -395,7 +470,8 @@ class QuestionProvider extends ChangeNotifier {
       presetCategory: 'Hypothetical scenarios',
       presetGoal: 'Provoking humor/playfulness',
       // Don't modify context or comfort level
-      keepCurrentSettings: false
+      keepCurrentSettings: false,
+      temporaryRandom: true // Ensure changes don't persist
     );
   }
   
@@ -407,19 +483,33 @@ class QuestionProvider extends ChangeNotifier {
       presetCategory: 'Personal values/beliefs',
       presetGoal: 'Stimulating thoughtful discussion',
       // Don't modify context or comfort level
-      keepCurrentSettings: false
+      keepCurrentSettings: false,
+      temporaryRandom: true // Ensure changes don't persist
     );
   }
   
   Future<void> generateIcebreakerQuestion({String? language}) async {
+    // The time-based approach helps to randomly rotate between different categories
+    // to create more diverse icebreaker questions
+    final List<String> icebreakerCategories = [
+      'Preferences',
+      'Hypothetical scenarios',
+      'Past experiences',
+      'Dreams/goals/ambitions'
+    ];
+    
+    // Select a category based on current time to get variety
+    final selectedCategory = icebreakerCategories[DateTime.now().second % icebreakerCategories.length];
+    
     // Don't update settings, just generate a question with these parameters
     return generateQuestion(
       language: language,
       presetMoodTone: 'Funny/Playful',
-      presetCategory: 'Preferences',
+      presetCategory: selectedCategory, // Use rotating categories for variety
       presetGoal: 'Breaking the ice',
       // Don't modify context or comfort level
-      keepCurrentSettings: false
+      keepCurrentSettings: false,
+      temporaryRandom: true // Ensure changes don't persist
     );
   }
   
@@ -432,31 +522,24 @@ class QuestionProvider extends ChangeNotifier {
   
   Future<void> generateRandomQuestion({String? language}) async {
     // Generate question with random parameters but don't update saved settings
-    // We'll temporarily set all parameters to 'Random'
-    
-    // Save current settings
-    List<String> originalMoodTone = List.from(_activeProfile?.moodTone ?? []);
-    List<String> originalCategory = List.from(_activeProfile?.thematicCategory ?? []);
-    List<String> originalGoal = List.from(_activeProfile?.goalOfInteraction ?? []);
     
     try {
-      // Generate with temporary 'Random' settings
+      // Generate with temporary Random settings for all categories
+      // The temporaryRandom flag ensures they don't get saved to the profile
       return await generateQuestion(
         language: language,
         presetMoodTone: 'Random',
         presetCategory: 'Random',
         presetGoal: 'Random',
+        // Force all to use random, overriding any saved settings
+        anyMoodTone: true,
+        anyCategory: true,
+        anyGoal: true,
         temporaryRandom: true  // Flag to indicate this is a temporary random selection
       );
-    } finally {
-      // Restore the original settings (don't wait for the result since we don't need it)
-      if (_activeProfile != null) {
-        updateSettings(
-          moodTone: originalMoodTone,
-          thematicCategory: originalCategory,
-          goalOfInteraction: originalGoal
-        );
-      }
+    } catch (e) {
+      print('Error generating random question: $e');
+      rethrow;
     }
   }
   

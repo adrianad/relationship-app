@@ -236,6 +236,11 @@ class LLMService {
     String languageName = languageMap[language] ?? 'English';
 
     // Construct the improved prompt template with optimized user feedback
+    // Add special handling for Preferences category to avoid food-only questions
+    final String categoryGuidance = thematicCategory == 'Preferences' 
+        ? '(Choose ONE specific aspect from this category to focus on, AVOID defaulting to food preferences unless explicitly asked for)'
+        : '(Choose ONE specific aspect from this category to focus on)';
+        
     final prompt = '''
     Create a conversation-starting question for two people based on these parameters:
 
@@ -244,7 +249,7 @@ class LLMService {
     Context: $context
     Comfort Level: $comfortLevel
     Goal of Interaction: $goalOfInteraction
-    Thematic Category: $thematicCategory  (Choose ONE specific aspect from this category to focus on)
+    Thematic Category: $thematicCategory $categoryGuidance
     Language: $languageName
     
     $questionHistory
@@ -253,12 +258,13 @@ class LLMService {
     1. Generate ONE unique, specific, and memorable question in $languageName
     2. Make the question personal, emotionally resonant, and slightly unexpected
     3. Avoid generic conversation starters or clichés - be specific and thought-provoking
-    4. Focus on depth and meaningful connection rather than surface-level small talk
-    5. Craft a question that feels natural and conversational in $languageName
-    6. Return ONLY the question with no additional text, formatting, or preamble
-    7. IMPORTANT: Focus on a SINGLE thematic aspect rather than trying to cover multiple categories
-    8. The question should make people think, reflect, and want to share something meaningful
-    9. Pay attention to highly-rated questions in the history and learn from what users liked
+    4. If the category is 'Preferences', choose from diverse topics like music, travel, leisure activities, style, career choices, books, films, art, etc. - don't default to food preferences
+    5. Focus on depth and meaningful connection rather than surface-level small talk
+    6. Craft a question that feels natural and conversational in $languageName
+    7. Return ONLY the question with no additional text, formatting, or preamble
+    8. IMPORTANT: Focus on a SINGLE thematic aspect rather than trying to cover multiple categories
+    9. The question should make people think, reflect, and want to share something meaningful
+    10. Pay attention to highly-rated questions in the history and learn from what users liked
 
     YOUR RESPONSE MUST ONLY CONTAIN THE QUESTION IN $languageName LANGUAGE, NOTHING ELSE.
     ''';

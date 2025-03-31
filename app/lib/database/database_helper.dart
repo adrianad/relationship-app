@@ -134,7 +134,14 @@ class DatabaseHelper {
 
   Future<int> updateProfile(Profile profile) async {
     final db = await database;
-    return await db.update('profiles', profile.toMap(), where: 'id = ?', whereArgs: [profile.id]);
+    print('Updating profile: ${profile.toMap()}'); // Debug print
+    return await db.update(
+      'profiles', 
+      profile.toMap(), 
+      where: 'id = ?', 
+      whereArgs: [profile.id],
+      conflictAlgorithm: ConflictAlgorithm.replace
+    );
   }
 
   Future<int> deleteProfile(int id) async {
