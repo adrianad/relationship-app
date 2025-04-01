@@ -1,0 +1,2 @@
+categories just load default when the app is closed and reopened
+	load categories that were set on close of the app

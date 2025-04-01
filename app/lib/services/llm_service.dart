@@ -223,7 +223,7 @@ class LLMService {
     String language = 'en', // Default to English
   }) async {
     // Map language code to full language name for the prompt
-    // IMPORTANT: Always use English language names in the prompt so the 
+    // IMPORTANT: Always use English language names in the prompt so the
     // LLM understands the instruction, but specify to generate in the target language
     final Map<String, String> languageMap = {
       'en': 'English',
@@ -232,34 +232,51 @@ class LLMService {
       'de': 'German',
       // Add new languages here as needed
     };
-    
-    String languageName = languageMap[language] ?? 'English';
-    
-    // Construct the prompt with new template
-    final prompt = '''
-    Prompt Template for Generating Personalized Interaction Questions:
 
-    Create a thoughtful, engaging question optimized for a conversation between two people based on the following variables:
+    String languageName = languageMap[language] ?? 'English';
+
+    // Construct the improved prompt template with optimized user feedback
+    // Add special handling for Preferences category to avoid food-only questions
+    final String categoryGuidance =
+        thematicCategory == 'Preferences'
+            ? '(Choose ONE specific aspect from this category to focus on, AVOID defaulting to food preferences unless explicitly asked for)'
+            : '(Choose ONE specific aspect from this category to focus on)';
+
+    final prompt = '''
+    Create a conversation-starting question for two people based on these parameters:
 
     Depth of Relationship: $depthOfRelationship
-
     Mood/Tone: $moodTone
-
     Context: $context
-
     Comfort Level: $comfortLevel
-
     Goal of Interaction: $goalOfInteraction
-
-    Thematic Category: $thematicCategory
-
-    Language: $languageName (Generate the question in $languageName)
+    Thematic Category: $thematicCategory $categoryGuidance
+    Language: $languageName
+    
     $questionHistory
 
-    Based on these inputs, generate a unique and engaging question tailored to the described scenario IN $languageName.
-    Return only the question with no additional text, formatting, or preamble.
-    IMPORTANT: The question MUST be in $languageName language.
-    DO NOT translate these input variables or categories; use them as conceptual guidelines.
+    IMPORTANT GUIDELINES:
+    1. Generate ONE unique, specific, and memorable question in $languageName
+    2. Make the question personal, emotionally resonant, and slightly unexpected
+    3. Avoid generic conversation starters or clichés - be specific and thought-provoking
+    4. If the category is 'Preferences', choose from diverse topics like music, travel, leisure activities, style, career choices, books, films, art, etc. - don't default to food preferences
+    5. Focus on depth and meaningful connection rather than surface-level small talk
+    6. Craft a question that feels natural and conversational in $languageName
+    7. Return ONLY the question with no additional text, formatting, or preamble
+    8. IMPORTANT: Focus on a SINGLE thematic aspect rather than trying to cover multiple categories
+    9. The question should make people think, reflect, and want to share something meaningful
+    10. Pay attention to highly-rated questions in the history and learn from what users liked
+    11. Keep the question short, concise and easy to understand, avoiding complex language or jargon
+    12. The context should dictate the question, but not everything has to be in the question - it should feel natural and not forced
+    13. Make the question just have one part, not two or three parts - it should be a single question that can be answered easily
+    14. Try not to use "and" in the question - it should be a single thought or idea
+    15. Don't use "and"
+    16. Make sure the question covers a new aspect that hasn't been asked before in the history
+    17. Be creative and think outside the box - the question should be something that people wouldn't normally think of asking each other
+    18. The question should be something that people would actually want to answer and discuss
+    
+
+    YOUR RESPONSE MUST ONLY CONTAIN THE QUESTION IN $languageName LANGUAGE, NOTHING ELSE.
     ''';
 
     try {

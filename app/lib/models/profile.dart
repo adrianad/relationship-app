@@ -12,6 +12,14 @@ class Profile {
   final List<String> goalOfInteraction;
   final List<String> thematicCategory;
   final String llmProvider;
+  
+  // Random settings preferences
+  final bool anyMoodTone;
+  final bool anyCategory;
+  final bool anyGoal;
+  final String? lastRandomMoodTone;
+  final String? lastRandomCategory;
+  final String? lastRandomGoal;
 
   Profile({
     this.id,
@@ -25,6 +33,12 @@ class Profile {
     required this.goalOfInteraction,
     required this.thematicCategory,
     required this.llmProvider,
+    this.anyMoodTone = false,
+    this.anyCategory = false,
+    this.anyGoal = false,
+    this.lastRandomMoodTone,
+    this.lastRandomCategory,
+    this.lastRandomGoal,
   });
 
   // Convert to Map for database operations
@@ -41,6 +55,12 @@ class Profile {
       'goal_of_interaction': goalOfInteraction.join(','),
       'thematic_category': thematicCategory.join(','),
       'llm_provider': llmProvider,
+      'any_mood_tone': anyMoodTone ? 1 : 0,
+      'any_category': anyCategory ? 1 : 0,
+      'any_goal': anyGoal ? 1 : 0,
+      'last_random_mood_tone': lastRandomMoodTone,
+      'last_random_category': lastRandomCategory,
+      'last_random_goal': lastRandomGoal,
     };
   }
 
@@ -58,6 +78,12 @@ class Profile {
       goalOfInteraction: (map['goal_of_interaction'] as String).split(','),
       thematicCategory: (map['thematic_category'] as String).split(','),
       llmProvider: map['llm_provider'],
+      anyMoodTone: map['any_mood_tone'] == 1,
+      anyCategory: map['any_category'] == 1,
+      anyGoal: map['any_goal'] == 1,
+      lastRandomMoodTone: map['last_random_mood_tone'],
+      lastRandomCategory: map['last_random_category'],
+      lastRandomGoal: map['last_random_goal'],
     );
   }
 
@@ -74,6 +100,12 @@ class Profile {
     List<String>? goalOfInteraction,
     List<String>? thematicCategory,
     String? llmProvider,
+    bool? anyMoodTone,
+    bool? anyCategory,
+    bool? anyGoal,
+    String? lastRandomMoodTone,
+    String? lastRandomCategory,
+    String? lastRandomGoal,
   }) {
     return Profile(
       id: id ?? this.id,
@@ -87,6 +119,12 @@ class Profile {
       goalOfInteraction: goalOfInteraction ?? this.goalOfInteraction,
       thematicCategory: thematicCategory ?? this.thematicCategory,
       llmProvider: llmProvider ?? this.llmProvider,
+      anyMoodTone: anyMoodTone ?? this.anyMoodTone,
+      anyCategory: anyCategory ?? this.anyCategory,
+      anyGoal: anyGoal ?? this.anyGoal,
+      lastRandomMoodTone: lastRandomMoodTone ?? this.lastRandomMoodTone,
+      lastRandomCategory: lastRandomCategory ?? this.lastRandomCategory,
+      lastRandomGoal: lastRandomGoal ?? this.lastRandomGoal,
     );
   }
 
@@ -103,6 +141,12 @@ class Profile {
       goalOfInteraction: ['Getting to know each other better'],
       thematicCategory: ['Past experiences'],
       llmProvider: 'OpenAI',
+      anyMoodTone: false,
+      anyCategory: false,
+      anyGoal: false,
+      lastRandomMoodTone: null,
+      lastRandomCategory: null,
+      lastRandomGoal: null,
     );
   }
 }

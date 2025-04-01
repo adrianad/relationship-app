@@ -132,10 +132,20 @@ class QuestionRecord {
     );
   }
 
-  // Create formatted history entry for LLM prompt
+  // Create optimized formatted history entry for LLM prompt
   String toPromptEntry(int index) {
-    // Build detailed feedback section
+    // Build feedback section with emojis for quick visual parsing
     String feedbackSection = '';
+    String ratingEmoji = '';
+    
+    // Add rating emoji for quick visual reference
+    if (rating >= 4) {
+      ratingEmoji = '⭐'; // High rating
+    } else if (rating >= 2) {
+      ratingEmoji = '🔸'; // Medium rating
+    } else if (rating > 0) {
+      ratingEmoji = '⚠️'; // Low rating
+    }
     
     // Format main feedback indicators
     if (moreLikeThis) {
@@ -145,28 +155,10 @@ class QuestionRecord {
       feedbackSection += "👎 User wants FEWER questions like this. ";
     }
     
-    // Format categorical feedback with clear labels
-    List<String> detailedFeedback = [];
-    if (relevance != null) detailedFeedback.add("Relevance: $relevance");
-    if (comfortLevel != null) detailedFeedback.add("Comfort Level: $comfortLevel");
-    if (enjoyment != null) detailedFeedback.add("Enjoyment: $enjoyment");
-    if (depthAppropriateness != null) detailedFeedback.add("Depth Appropriateness: $depthAppropriateness");
-    if (intimacyAppropriateness != null) detailedFeedback.add("Intimacy Appropriateness: $intimacyAppropriateness");
-    
-    // Add detailed feedback if any was provided
-    if (detailedFeedback.isNotEmpty) {
-      feedbackSection += "\n      Detailed feedback: " + detailedFeedback.join("; ");
-    }
-    
+    // Return simplified format focusing on question, rating and feedback
     return '''
 $index. "$question"
-   - Depth of Relationship: $depthOfRelationship
-   - Mood/Tone: $moodTone
-   - Context: $context
-   - Comfort Level: $comfortLevelSetting
-   - Goal of Interaction: $goalOfInteraction
-   - Thematic Category: $thematicCategory
-   - User Rating: $rating/5
+   - User Rating: $ratingEmoji $rating/5
    - User Feedback: ${feedbackSection.isEmpty ? 'None provided' : feedbackSection}
 ''';
   }

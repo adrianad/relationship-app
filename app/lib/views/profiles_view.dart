@@ -17,13 +17,9 @@ class _ProfilesViewState extends State<ProfilesView> {
   final _descriptionController = TextEditingController();
   
   // Default values for new profile
-  String _selectedDepth = 'Friends';
-  List<String> _selectedMoodTone = ['Funny/Playful'];
-  String _selectedContext = 'Casual hangout';
-  String _selectedComfort = 'Moderate';
-  List<String> _selectedGoals = ['Getting to know each other better'];
-  List<String> _selectedCategories = ['Past experiences'];
   String _selectedProvider = 'OpenAI';
+  String _selectedDepth = 'Friends';
+  String _selectedComfort = 'Moderate';
   
   @override
   void dispose() {
@@ -83,19 +79,6 @@ class _ProfilesViewState extends State<ProfilesView> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Settings button
-                                    IconButton(
-                                      icon: const Icon(Icons.settings),
-                                      tooltip: localizations.configureSettings,
-                                      onPressed: () {
-                                        // Set this profile as active
-                                        if (profile.id != profileProvider.activeProfile?.id) {
-                                          profileProvider.setActiveProfile(profile.id!);
-                                        }
-                                        // Navigate to settings
-                                        Navigator.pushNamed(context, '/settings');
-                                      },
-                                    ),
                                     IconButton(
                                       icon: const Icon(Icons.edit),
                                       tooltip: localizations.editProfile,
@@ -136,13 +119,9 @@ class _ProfilesViewState extends State<ProfilesView> {
     // Reset form fields
     _nameController.text = '';
     _descriptionController.text = '';
-    _selectedDepth = 'Friends';
-    _selectedMoodTone = ['Funny/Playful'];
-    _selectedContext = 'Casual hangout';
-    _selectedComfort = 'Moderate';
-    _selectedGoals = ['Getting to know each other better'];
-    _selectedCategories = ['Past experiences'];
     _selectedProvider = 'OpenAI';
+    _selectedDepth = 'Friends';
+    _selectedComfort = 'Moderate';
     
     showDialog(
       context: context,
@@ -170,12 +149,12 @@ class _ProfilesViewState extends State<ProfilesView> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Only show the basic settings for now to keep the dialog simple
+                // Show depth of relationship, comfort level, and LLM provider settings
                 DropdownButtonFormField<String>(
                   value: _selectedDepth,
                   decoration: InputDecoration(labelText: localizations.depthOfRelationship),
                   items: ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers']
-                      .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+                      .map((option) => DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option))))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -183,12 +162,27 @@ class _ProfilesViewState extends State<ProfilesView> {
                     }
                   },
                 ),
+                const SizedBox(height: 16),
+                
+                DropdownButtonFormField<String>(
+                  value: _selectedComfort,
+                  decoration: InputDecoration(labelText: localizations.comfortLevel),
+                  items: ['Safe (low risk)', 'Moderate', 'High Risk']
+                      .map((option) => DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedComfort = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
                 
                 DropdownButtonFormField<String>(
                   value: _selectedProvider,
                   decoration: InputDecoration(labelText: localizations.llmProvider),
                   items: ['OpenAI', 'Anthropic', 'Gemini']
-                      .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+                      .map((option) => DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option))))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -208,15 +202,12 @@ class _ProfilesViewState extends State<ProfilesView> {
           TextButton(
             onPressed: () {
               if (_formKey.currentState!.validate()) {
-                final newProfile = Profile(
+                // Create profile with default question settings, customizing name, description, depth, comfort and LLM provider
+                final newProfile = Profile.defaultProfile().copyWith(
                   name: _nameController.text,
                   description: _descriptionController.text,
                   depthOfRelationship: _selectedDepth,
-                  moodTone: _selectedMoodTone,
-                  context: _selectedContext,
                   comfortLevel: _selectedComfort,
-                  goalOfInteraction: _selectedGoals,
-                  thematicCategory: _selectedCategories,
                   llmProvider: _selectedProvider,
                 );
                 
@@ -240,11 +231,7 @@ class _ProfilesViewState extends State<ProfilesView> {
     _nameController.text = profile.name;
     _descriptionController.text = profile.description;
     _selectedDepth = profile.depthOfRelationship;
-    _selectedMoodTone = List.from(profile.moodTone);
-    _selectedContext = profile.context;
     _selectedComfort = profile.comfortLevel;
-    _selectedGoals = List.from(profile.goalOfInteraction);
-    _selectedCategories = List.from(profile.thematicCategory);
     _selectedProvider = profile.llmProvider;
     
     showDialog(
@@ -273,12 +260,12 @@ class _ProfilesViewState extends State<ProfilesView> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Basic settings for the edit dialog
+                // Show depth of relationship, comfort level, and LLM provider settings
                 DropdownButtonFormField<String>(
                   value: _selectedDepth,
                   decoration: InputDecoration(labelText: localizations.depthOfRelationship),
                   items: ['Acquaintances', 'Friends', 'Close Friends', 'Partners/Lovers']
-                      .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+                      .map((option) => DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option))))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -286,12 +273,27 @@ class _ProfilesViewState extends State<ProfilesView> {
                     }
                   },
                 ),
+                const SizedBox(height: 16),
+                
+                DropdownButtonFormField<String>(
+                  value: _selectedComfort,
+                  decoration: InputDecoration(labelText: localizations.comfortLevel),
+                  items: ['Safe (low risk)', 'Moderate', 'High Risk']
+                      .map((option) => DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option))))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedComfort = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
                 
                 DropdownButtonFormField<String>(
                   value: _selectedProvider,
                   decoration: InputDecoration(labelText: localizations.llmProvider),
                   items: ['OpenAI', 'Anthropic', 'Gemini']
-                      .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+                      .map((option) => DropdownMenuItem(value: option, child: Text(getLocalizedOption(context, option))))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -313,10 +315,12 @@ class _ProfilesViewState extends State<ProfilesView> {
           TextButton(
             onPressed: () {
               if (_formKey.currentState!.validate()) {
+                // Update name, description, depth, comfort level and LLM provider
                 final updatedProfile = profile.copyWith(
                   name: _nameController.text,
                   description: _descriptionController.text,
                   depthOfRelationship: _selectedDepth,
+                  comfortLevel: _selectedComfort,
                   llmProvider: _selectedProvider,
                 );
                 
@@ -358,5 +362,29 @@ class _ProfilesViewState extends State<ProfilesView> {
         ],
       ),
     );
+  }
+  
+  // Helper function to get localized text for options while keeping original values for the prompt
+  String getLocalizedOption(BuildContext context, String option) {
+    final localizations = AppLocalizations.of(context);
+    
+    // LLM Provider
+    if (option == 'OpenAI') return localizations.openAiProvider;
+    if (option == 'Anthropic') return localizations.anthropicProvider;
+    if (option == 'Gemini') return localizations.geminiProvider;
+    
+    // Depth Options
+    if (option == 'Acquaintances') return localizations.depthAcquaintances;
+    if (option == 'Friends') return localizations.depthFriends;
+    if (option == 'Close Friends') return localizations.depthCloseFriends;
+    if (option == 'Partners/Lovers') return localizations.depthPartners;
+    
+    // Comfort Options
+    if (option == 'Safe (low risk)') return localizations.comfortSafe;
+    if (option == 'Moderate') return localizations.comfortModerate;
+    if (option == 'High Risk') return localizations.comfortHighRisk;
+    
+    // Default fallback
+    return option;
   }
 }

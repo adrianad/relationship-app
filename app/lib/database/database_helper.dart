@@ -19,7 +19,25 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path, 
+      version: 2, 
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB
+    );
+  }
+  
+  // Handles database migrations
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add the new columns to the profiles table for random settings
+      await db.execute('ALTER TABLE profiles ADD COLUMN any_mood_tone INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE profiles ADD COLUMN any_category INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE profiles ADD COLUMN any_goal INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE profiles ADD COLUMN last_random_mood_tone TEXT');
+      await db.execute('ALTER TABLE profiles ADD COLUMN last_random_category TEXT');
+      await db.execute('ALTER TABLE profiles ADD COLUMN last_random_goal TEXT');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -36,7 +54,13 @@ class DatabaseHelper {
         comfort_level TEXT NOT NULL,
         goal_of_interaction TEXT NOT NULL,
         thematic_category TEXT NOT NULL,
-        llm_provider TEXT NOT NULL
+        llm_provider TEXT NOT NULL,
+        any_mood_tone INTEGER NOT NULL DEFAULT 0,
+        any_category INTEGER NOT NULL DEFAULT 0,
+        any_goal INTEGER NOT NULL DEFAULT 0,
+        last_random_mood_tone TEXT,
+        last_random_category TEXT,
+        last_random_goal TEXT
       )
     ''');
 
@@ -110,7 +134,14 @@ class DatabaseHelper {
 
   Future<int> updateProfile(Profile profile) async {
     final db = await database;
-    return await db.update('profiles', profile.toMap(), where: 'id = ?', whereArgs: [profile.id]);
+    print('Updating profile: ${profile.toMap()}'); // Debug print
+    return await db.update(
+      'profiles', 
+      profile.toMap(), 
+      where: 'id = ?', 
+      whereArgs: [profile.id],
+      conflictAlgorithm: ConflictAlgorithm.replace
+    );
   }
 
   Future<int> deleteProfile(int id) async {
@@ -197,16 +228,45 @@ class DatabaseHelper {
     return await db.delete('questions', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Formatting history for prompts
-  Future<String> getFormattedHistory(int profileId, {int maxRecords = 100}) async {
-    final questions = await getQuestionsForProfile(profileId, limit: maxRecords);
+  // Formatting history for prompts - optimized version
+  Future<String> getFormattedHistory(int profileId, {int maxRecords = 10}) async {
+    final allQuestions = await getQuestionsForProfile(profileId, limit: maxRecords * 3);
 
-    if (questions.isEmpty) {
+    if (allQuestions.isEmpty) {
       return '';
     }
 
-    // Build the formatted history string
-    String historyText = '\n**Avoid repeating previously asked questions** listed below (with provided feedback):\n\n';
+    // Sort questions by rating to prioritize high-rated and low-rated for better learning
+    final sortedQuestions = [...allQuestions];
+    sortedQuestions.sort((a, b) {
+      // First prioritize questions with like/dislike feedback
+      final aHasFeedback = a.moreLikeThis || a.lessLikeThis;
+      final bHasFeedback = b.moreLikeThis || b.lessLikeThis;
+      
+      if (aHasFeedback && !bHasFeedback) return -1;
+      if (!aHasFeedback && bHasFeedback) return 1;
+      
+      // Then sort by rating (highest first, then lowest)
+      if (a.rating >= 4 && b.rating < 4) return -1;
+      if (a.rating < 4 && b.rating >= 4) return 1;
+      if (a.rating <= 1 && b.rating > 1) return -1; 
+      if (a.rating > 1 && b.rating <= 1) return 1;
+      
+      // Then sort by recency
+      return b.timestamp.compareTo(a.timestamp);
+    });
+    
+    // Take the most relevant questions for the model, limited by maxRecords
+    final questions = sortedQuestions.take(maxRecords).toList();
+
+    // Build the formatted history string with a helpful introduction
+    String historyText = '''
+
+QUESTION HISTORY (learn from this feedback):
+**Avoid repeating previously asked questions** listed below.
+Focus on characteristics of highly-rated questions and avoid characteristics of poorly-rated ones.
+
+''';
 
     for (int i = 0; i < questions.length; i++) {
       historyText += questions[i].toPromptEntry(i + 1);
