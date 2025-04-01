@@ -108,5 +108,13 @@
   "categoryDreams": "Träume/Ziele/Ambitionen",
   "categoryPreferences": "Vorlieben",
   "categoryRelationships": "Beziehungen/Intimität",
-  "categorySecrets": "Geheimnisse/Geständnisse"
+  "categorySecrets": "Geheimnisse/Geständnisse",
+  
+  "shareQuestion": "Diese Frage teilen",
+  
+  "questionOfTheDay": "Frage des Tages",
+  "enableDailyNotification": "Tägliche Frage aktivieren",
+  "notificationTime": "Benachrichtigungszeit",
+  "dailyQuestionEnabled": "Tägliche Fragenbenachrichtigung aktiviert",
+  "dailyQuestionDisabled": "Tägliche Fragenbenachrichtigung deaktiviert"
 }

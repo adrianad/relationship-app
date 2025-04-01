@@ -122,5 +122,13 @@
   "categoryDreams": "Dreams/goals/ambitions",
   "categoryPreferences": "Preferences",
   "categoryRelationships": "Relationships/intimacy",
-  "categorySecrets": "Secrets/confessions"
+  "categorySecrets": "Secrets/confessions",
+  
+  "shareQuestion": "Share this question",
+  
+  "questionOfTheDay": "Question of the Day",
+  "enableDailyNotification": "Enable Daily Question",
+  "notificationTime": "Notification Time",
+  "dailyQuestionEnabled": "Daily question notification enabled",
+  "dailyQuestionDisabled": "Daily question notification disabled"
 }

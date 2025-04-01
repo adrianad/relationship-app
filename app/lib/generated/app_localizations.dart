@@ -710,6 +710,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Secrets/confessions'**
   String get categorySecrets;
+
+  /// No description provided for @shareQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this question'**
+  String get shareQuestion;
+
+  /// No description provided for @questionOfTheDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Question of the Day'**
+  String get questionOfTheDay;
+
+  /// No description provided for @enableDailyNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Daily Question'**
+  String get enableDailyNotification;
+
+  /// No description provided for @notificationTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification Time'**
+  String get notificationTime;
+
+  /// No description provided for @dailyQuestionEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily question notification enabled'**
+  String get dailyQuestionEnabled;
+
+  /// No description provided for @dailyQuestionDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily question notification disabled'**
+  String get dailyQuestionDisabled;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

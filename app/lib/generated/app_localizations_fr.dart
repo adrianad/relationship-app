@@ -317,4 +317,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get categorySecrets => 'Secrets/confessions';
+
+  @override
+  String get shareQuestion => 'Partager cette question';
+
+  @override
+  String get questionOfTheDay => 'Question du Jour';
+
+  @override
+  String get enableDailyNotification => 'Activer Question Quotidienne';
+
+  @override
+  String get notificationTime => 'Heure de Notification';
+
+  @override
+  String get dailyQuestionEnabled => 'Notification de question quotidienne activée';
+
+  @override
+  String get dailyQuestionDisabled => 'Notification de question quotidienne désactivée';
 }

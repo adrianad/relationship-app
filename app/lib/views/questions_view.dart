@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:app/providers/question_provider.dart';
 import 'package:app/providers/language_provider.dart';
 import 'package:app/generated/app_localizations.dart';
+import 'package:share_plus/share_plus.dart';
 
 class QuestionsView extends StatefulWidget {
   final String questionText;
@@ -1019,36 +1020,64 @@ class _QuestionsViewState extends State<QuestionsView> {
                 const SizedBox(height: 12),
 
                 // Chat bubble with question or loading indicator
-                Card(
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Container(
-                    padding: const EdgeInsets.all(24.0),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.grey.shade100, Colors.grey.shade200],
+                Stack(
+                  children: [
+                    Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Container(
+                        padding: const EdgeInsets.all(24.0),
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Colors.grey.shade100, Colors.grey.shade200],
+                          ),
+                        ),
+                        child:
+                            _isLoading
+                                ? const Center(
+                                  child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()),
+                                )
+                                : Text(
+                                  _error != null ? localizations.errorLoadingQuestion : _currentQuestion,
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade800,
+                                    height: 1.4,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
                       ),
                     ),
-                    child:
-                        _isLoading
-                            ? const Center(
-                              child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()),
-                            )
-                            : Text(
-                              _error != null ? localizations.errorLoadingQuestion : _currentQuestion,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade800,
-                                height: 1.4,
+                    // Share button positioned at the top right of the card
+                    if (!_isLoading && _error == null)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: _shareQuestion,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              textAlign: TextAlign.center,
+                              child: Tooltip(
+                                message: localizations.shareQuestion,
+                                child: Icon(Icons.share, size: 20, color: Colors.deepPurple.shade400),
+                              ),
                             ),
-                  ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
@@ -1232,6 +1261,13 @@ class _QuestionsViewState extends State<QuestionsView> {
     if (_currentQuestion == defaultQuestion) return;
 
     questionProvider.saveQuestionToHistory(rating: _rating, moreLikeThis: _moreLikeThis, lessLikeThis: _lessLikeThis);
+  }
+
+  // Share the current question
+  void _shareQuestion() {
+    if (_currentQuestion.isNotEmpty) {
+      Share.share(_currentQuestion);
+    }
   }
 
   // Helper function to get localized text for options while keeping original values for the prompt

@@ -65,7 +65,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     // Get initial locale
     _currentLocale = Provider.of<LanguageProvider>(context, listen: false).currentLocale;
-    
+
     // Set initial default question with the current language
     // Using WidgetsBinding to ensure we're not in the build phase
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -83,14 +83,13 @@ class _MyAppState extends State<MyApp> {
     final newLocale = Provider.of<LanguageProvider>(context).currentLocale;
     if (_currentLocale != newLocale) {
       _currentLocale = newLocale;
-      
+
       // Use Future.microtask to update the default question after the current build completes
       Future.microtask(() {
         // This ensures the app responds to system language changes too
-        Provider.of<QuestionProvider>(context, listen: false)
-          .updateDefaultQuestion(newLocale.languageCode);
+        Provider.of<QuestionProvider>(context, listen: false).updateDefaultQuestion(newLocale.languageCode);
       });
-      
+
       // Force rebuild by calling setState
       setState(() {});
     }
