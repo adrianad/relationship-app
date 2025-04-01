@@ -237,10 +237,11 @@ class LLMService {
 
     // Construct the improved prompt template with optimized user feedback
     // Add special handling for Preferences category to avoid food-only questions
-    final String categoryGuidance = thematicCategory == 'Preferences' 
-        ? '(Choose ONE specific aspect from this category to focus on, AVOID defaulting to food preferences unless explicitly asked for)'
-        : '(Choose ONE specific aspect from this category to focus on)';
-        
+    final String categoryGuidance =
+        thematicCategory == 'Preferences'
+            ? '(Choose ONE specific aspect from this category to focus on, AVOID defaulting to food preferences unless explicitly asked for)'
+            : '(Choose ONE specific aspect from this category to focus on)';
+
     final prompt = '''
     Create a conversation-starting question for two people based on these parameters:
 
@@ -265,6 +266,15 @@ class LLMService {
     8. IMPORTANT: Focus on a SINGLE thematic aspect rather than trying to cover multiple categories
     9. The question should make people think, reflect, and want to share something meaningful
     10. Pay attention to highly-rated questions in the history and learn from what users liked
+    11. Keep the question short, concise and easy to understand, avoiding complex language or jargon
+    12. The context should dictate the question, but not everything has to be in the question - it should feel natural and not forced
+    13. Make the question just have one part, not two or three parts - it should be a single question that can be answered easily
+    14. Try not to use "and" in the question - it should be a single thought or idea
+    15. Don't use "and"
+    16. Make sure the question covers a new aspect that hasn't been asked before in the history
+    17. Be creative and think outside the box - the question should be something that people wouldn't normally think of asking each other
+    18. The question should be something that people would actually want to answer and discuss
+    
 
     YOUR RESPONSE MUST ONLY CONTAIN THE QUESTION IN $languageName LANGUAGE, NOTHING ELSE.
     ''';
